@@ -3,9 +3,9 @@
 We grow this file across Phase 2:
     [x] TokenEmbedding      ID  -> learnable vector
     [x] PositionalEmbedding position -> learnable vector
-    [~] Head (self-attention)   <- YOU implement forward()
-    [ ] MultiHead, MLP, Block, LayerNorm, residuals
-    [ ] the full GPT
+    [x] Head (self-attention)
+    [x] MiniGPT             minimal end-to-end model that can train + generate
+    [ ] MultiHead, MLP, Block, LayerNorm, residuals (architecture upgrades, later)
 
 Nothing here uses nn.Transformer / nn.MultiheadAttention — every layer is built
 from scratch so we understand all of it.
@@ -111,6 +111,57 @@ class Head(nn.Module):
         return out
 
 
+class MiniGPT(nn.Module):
+    """The smallest end-to-end model that can actually train and generate.
+
+    Pipeline:  IDs -> (token + position embeddings) -> one attention head
+               -> a linear "language-model head" -> logits over the vocab.
+    Given targets, it also computes the cross-entropy loss.
+    """
+
+    def __init__(self, vocab_size: int, n_embd: int, head_size: int, block_size: int) -> None:
+        super().__init__()
+        self.block_size = block_size
+        self.token_emb = TokenEmbedding(vocab_size, n_embd)
+        self.pos_emb = PositionalEmbedding(block_size, n_embd)
+        self.head = Head(n_embd, head_size, block_size)
+        # The prediction head: maps each token's context vector to one score
+        # ("logit") per possible next character. vocab_size scores per position.
+        self.lm_head = nn.Linear(head_size, vocab_size)
+
+    def forward(
+        self, idx: torch.Tensor, targets: torch.Tensor | None = None
+    ) -> tuple[torch.Tensor, torch.Tensor | None]:
+        # idx, targets: (B, T) integer IDs
+        B, T = idx.shape
+
+        h = self.token_emb(idx) + self.pos_emb(T)  # (B, T, C)   what + where
+        h = self.head(h)                           # (B, T, head_size)  context-aware
+        logits = self.lm_head(h)                   # (B, T, vocab_size) raw next-char scores
+
+        if targets is None:
+            return logits, None
+
+        # Cross-entropy expects (N, vocab) logits and (N,) targets, so flatten the
+        # batch and time dims into one long list of predictions. cross_entropy does
+        # softmax + the -log(prob of the true char) you derived by hand, averaged.
+        B, T, V = logits.shape
+        loss = F.cross_entropy(logits.view(B * T, V), targets.view(B * T))
+        return logits, loss
+
+    @torch.no_grad()
+    def generate(self, idx: torch.Tensor, max_new_tokens: int) -> torch.Tensor:
+        """Autoregressive generation: the predict -> sample -> append loop."""
+        for _ in range(max_new_tokens):
+            idx_cond = idx[:, -self.block_size :]      # crop to last block_size tokens
+            logits, _ = self(idx_cond)                 # (B, T, V)
+            logits = logits[:, -1, :]                  # only the LAST position -> (B, V)
+            probs = F.softmax(logits, dim=-1)          # (B, V) next-char distribution
+            next_id = torch.multinomial(probs, num_samples=1)  # (B, 1) sample one
+            idx = torch.cat([idx, next_id], dim=1)     # append, then loop
+        return idx
+
+
 if __name__ == "__main__":
     # --- demo (boilerplate): token + positional embeddings on one batch ---
     from src.data import get_batch, load_corpus, train_val_split
@@ -121,7 +172,7 @@ if __name__ == "__main__":
     train_data, _ = train_val_split(data)
 
     block_size, batch_size, n_embd = 8, 4, 16
-    xb, _ = get_batch(train_data, block_size, batch_size)
+    xb, yb = get_batch(train_data, block_size, batch_size)
     B, T = xb.shape
 
     tok_emb_layer = TokenEmbedding(tok.vocab_size, n_embd)
@@ -162,3 +213,17 @@ if __name__ == "__main__":
     assert rows_sum_to_1, "each attention row must sum to 1 (did you softmax over dim=-1?)"
     assert future_is_zero, "tokens must not attend to the future (did you apply the causal mask?)"
     print("\nOK: attention rows sum to 1 and the future is masked")
+
+    # --- the full minimal model: loss + generation ---
+    import math
+
+    model = MiniGPT(tok.vocab_size, n_embd, head_size, block_size)
+    logits, loss = model(xb, yb)
+    print(f"\nMiniGPT logits: {tuple(logits.shape)}   (B, T, vocab_size)")
+    print(f"initial loss  : {loss.item():.3f}   (expected ~ln(65) = {math.log(tok.vocab_size):.3f})")
+
+    # Generate 200 chars from a single newline (ID 0). Untrained -> gibberish.
+    start = torch.zeros((1, 1), dtype=torch.long)  # (1, 1) a single newline token
+    out_ids = model.generate(start, max_new_tokens=200)[0].tolist()
+    print("\n--- untrained sample (should be gibberish) ---")
+    print(tok.decode(out_ids))

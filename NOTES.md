@@ -96,6 +96,31 @@ by sqrt(head_size) so they don't grow large and make softmax too spiky. Note: in
 an untrained model the weights are meaningless noise — the *structure* is real,
 but useful attention patterns only emerge after training.
 
+### Logits and the language-model head
+After attention gives each token a context-aware vector, one final linear layer
+(the "language-model head") maps that vector to **vocab_size raw scores** — one
+per possible next character. These raw, un-normalized scores are called
+**logits**. Softmax turns them into the probability distribution; bigger logit =
+higher probability. So the model's output shape is (B, T, vocab_size): a full
+next-character score vector at every position.
+
+### Cross-entropy loss (in code)
+The training loss. It is exactly the `-log(probability assigned to the true next
+character)` from Phase 0, averaged over all positions. PyTorch's
+`F.cross_entropy` takes the **raw logits** (it does the softmax internally) plus
+the integer targets, so we never softmax by hand for the loss. It expects shape
+(N, vocab) for logits and (N,) for targets, so we flatten the (B, T, vocab)
+logits and (B, T) targets into one long list of N = B*T predictions. A brand-new
+model scores ~ln(vocab_size) (~4.17 for us); training drives it down.
+
+### Generation / sampling
+Turning the model into a text generator = the autoregressive loop: feed the
+current text, take the logits at the **last** position, softmax to a probability
+distribution, **sample** one character from it (torch.multinomial), append it,
+repeat. We crop the input to the last block_size tokens each step because the
+positional table only knows that many positions. Sampling (vs. always taking the
+single most-likely char) is what gives varied, non-repetitive text.
+
 ---
 
 ## Phase 0 — Foundations
