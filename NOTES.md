@@ -79,6 +79,23 @@ broadcasts cleanly over the (B, T, C) batch. This GPT-style "learned absolute"
 scheme is one option; the original Transformer used fixed sine/cosine patterns
 instead.
 
+### Self-attention (one head)
+The mechanism that lets each token pull in information from earlier tokens.
+Core idea in one line: **attention is a weighted average where the weights mean
+"how relevant."** Each token produces three vectors via learned matrices: a
+**query** ("what I'm looking for"), a **key** ("what I am"), and a **value**
+("the info I'll hand over"). To find how relevant token B is to token A, compare
+A's query with B's key (a dot product → one relevance score). Steps: (1) make
+q, k, v; (2) score every query against every key → a (T, T) grid; (3) **causal
+mask** — set future positions to -inf so a token can't look ahead; (4) softmax
+each row → percentages that sum to 1 (the attention weights); (5) blend the
+values by those weights → each token's new, context-aware vector. The weights
+form a lower-triangular matrix (the empty upper-right is the masked future).
+"Self" = queries, keys, values all come from the same sequence. We divide scores
+by sqrt(head_size) so they don't grow large and make softmax too spiky. Note: in
+an untrained model the weights are meaningless noise — the *structure* is real,
+but useful attention patterns only emerge after training.
+
 ---
 
 ## Phase 0 — Foundations
