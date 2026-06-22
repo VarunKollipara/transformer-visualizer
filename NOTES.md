@@ -10,6 +10,45 @@ each phase.
 
 ---
 
+## Phase 1 — Data & tokenizer
+
+### encode / decode, stoi / itos
+The tokenizer is two dictionaries. We scan the whole corpus once to find its
+vocabulary — the **sorted** set of unique characters (65 of them for
+tinyshakespeare) — and number them 0..64 by sorted position. `stoi`
+("string-to-integer") maps each character to its ID and powers **encode**;
+`itos` ("integer-to-string") is the reverse and powers **decode**. Sorting is
+what makes the numbering a fixed contract: a model is trained against one
+specific character↔number mapping, so that mapping must be identical every run,
+or the model would read scrambled input. A correct tokenizer is **lossless**:
+`decode(encode(text)) == text` exactly. Fun detail you can see in the encoded
+IDs — space is ID 1 and newline is ID 0 (the lowest IDs, because sorting is by
+Unicode code point), so word boundaries are visible right in the numbers.
+
+### Context window (block_size) and the (B, T) batch
+The model never reads the whole corpus at once. We encode the corpus into one
+long stream of IDs, then repeatedly grab small **random windows** from it. Two
+knobs: **block_size** (a.k.a. context length) is how many tokens the model sees
+at once — the width of one window; **batch_size** is how many independent
+windows we stack and process in parallel each step (GPUs are fast because they
+handle many sequences simultaneously). A batch's input `x` and target `y` are
+both shaped **(B, T)** — B = batch_size rows, T = block_size columns — where `y`
+is `x` slid one position to the right. A neat consequence: a single window of
+length T contains T separate predictions (position t sees tokens 0..t and
+predicts t+1), so the model learns from T signals per window, not one. This is
+also why attention must later be **causal**: position t may only look at tokens
+0..t, never ahead, or it would see the answer it's supposed to predict.
+
+### Train / validation split (overfitting)
+Before training we set aside the last ~10% of the stream as a **validation
+set** the model never trains on. During training we watch two loss numbers: on
+the training data and on this held-out data. If training loss keeps falling but
+validation loss flattens or rises, the model is **overfitting** — memorizing the
+training text instead of learning the language's patterns. The val set is our
+honesty check: it measures generalization to text the model has never seen.
+
+---
+
 ## Phase 0 — Foundations
 
 ### Language model

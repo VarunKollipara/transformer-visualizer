@@ -6,8 +6,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "numpy>=1.26",
-    # torch is the core ML dependency. It's a large download, so we add it in
-    # Phase 2 (the model), not now. To add it later: `uv add torch`
+    "torch>=2.12.1",  # core ML library: tensors, autograd, the neural-net layers
 ]
 
 [dependency-groups]
