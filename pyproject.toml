@@ -1,0 +1,19 @@
+[project]
+name = "transformer-visualizer"
+version = "0.1.0"
+description = "A from-scratch, character-level GPT-style transformer with an interactive web visualizer."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "numpy>=1.26",
+    # torch is the core ML dependency. It's a large download, so we add it in
+    # Phase 2 (the model), not now. To add it later: `uv add torch`
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+]
+
+[tool.uv]
+# uv manages its own Python (see .python-version) and the .venv for us.

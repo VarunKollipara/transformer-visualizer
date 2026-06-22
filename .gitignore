@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+
+# uv
+# (uv.lock SHOULD be committed — it pins exact dependency versions.)
+
+# Data: keep small text corpora, ignore large/derived artifacts
+data/*.bin
+data/*.npy
+
+# Model checkpoints
+*.pt
+*.pth
+checkpoints/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Node (for the Next.js frontend later)
+node_modules/
+.next/
