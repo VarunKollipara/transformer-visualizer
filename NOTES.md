@@ -123,6 +123,30 @@ single most-likely char) is what gives varied, non-repetitive text.
 
 ---
 
+## Phase 3 — Training
+
+### The training loop (optimizer, the four lines)
+Training is the Phase 0 loop in code, repeated thousands of times on random
+batches. Each step: (1) **forward** — `logits, loss = model(xb, yb)`; (2)
+**reset** — `optimizer.zero_grad()` clears the previous step's gradients (PyTorch
+adds new gradients onto old ones by default, so we must wipe them); (3)
+**backward** — `loss.backward()` backprops, filling in the gradient for every
+parameter; (4) **step** — `optimizer.step()` nudges every parameter one step
+downhill. Only step (4) actually changes the model; the others compute *how* to
+change it. The **optimizer** (we use AdamW) holds all the parameters and applies
+the update; the **learning rate** is the step size. We periodically measure loss
+on both train and val sets to watch for overfitting.
+
+### First result
+A tiny single-head model (~23K params, block_size 32) trained on CPU drove loss
+from ~4.18 (the ln(65) baseline) to ~2.34 in 3000 steps, with train and val
+falling together (no overfitting). Its samples aren't English but capture the
+*format* of a play — capitalized speaker names with colons, line breaks, and
+real short words — emerging purely from next-character prediction. Architecture
+upgrades (multi-head, MLP, stacked blocks) come next to push quality higher.
+
+---
+
 ## Phase 0 — Foundations
 
 ### Language model
