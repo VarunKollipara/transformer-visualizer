@@ -49,6 +49,38 @@ honesty check: it measures generalization to text the model has never seen.
 
 ---
 
+## Phase 2 — The model
+
+### Token embedding
+A token's integer ID is an arbitrary label — you can't do meaningful math on it
+and there's nothing to learn in a frozen integer. So the model's first layer
+replaces each ID with a **learnable vector**. The embedding is one matrix of
+shape (vocab_size, n_embd): one row per token, each row a vector of length
+`n_embd` (the "channels", `C`). Embedding a token is just looking up its row, so
+a batch of IDs shaped (B, T) becomes vectors shaped (B, T, C). Every number in
+the table is a parameter, started random and tuned by backprop — so the model
+learns its own representation of each character, and tokens used similarly drift
+toward similar vectors. Two facts to hold: the same ID always maps to the same
+vector (it's the same row), and `nn.Embedding` is nothing more than this — a
+learnable matrix you index into.
+
+### Positional embedding
+Token embeddings know *what* a token is but not *where* it sits — every `'e'`
+gets the identical vector regardless of position. That loses order, and order
+carries meaning ("dog bites man" vs "man bites dog"). The fix is a second
+learnable table, shape (block_size, C), indexed by **position** (0, 1, ...,
+block_size-1) instead of token identity. For a token at position t we add
+`pos_table[t]` to its word vector — same width C, so it's an element-wise sum.
+The combined vector `h = token_emb + pos_emb` (shape (B, T, C)) now encodes both
+identity and location, so the same letter at two positions gets two different
+vectors. All sequences in a batch share the same position table (position 3 is
+"the 4th slot" regardless of content), which is why a (T, C) position tensor
+broadcasts cleanly over the (B, T, C) batch. This GPT-style "learned absolute"
+scheme is one option; the original Transformer used fixed sine/cosine patterns
+instead.
+
+---
+
 ## Phase 0 — Foundations
 
 ### Language model
