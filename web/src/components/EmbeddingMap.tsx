@@ -52,7 +52,11 @@ export default function EmbeddingMap() {
         ))}
       </div>
 
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full rounded-xl bg-stone-50">
+      <svg
+        viewBox={`0 0 ${W} ${H}`}
+        className="w-full rounded-xl bg-stone-50"
+        onMouseLeave={() => setHover(null)}
+      >
         {/* faint axes through the origin */}
         <line x1={sx(-1)} y1={sy(0)} x2={sx(1)} y2={sy(0)} stroke="#e7e5e4" />
         <line x1={sx(0)} y1={sy(-1)} x2={sx(0)} y2={sy(1)} stroke="#e7e5e4" />
@@ -63,9 +67,12 @@ export default function EmbeddingMap() {
               key={p.id}
               x={sx(p.x)}
               y={sy(p.y)}
-              fontSize={isHover ? 20 : 13}
+              fontSize={isHover ? 22 : 13}
               fontWeight={isHover ? 700 : 500}
               fill={GROUP[p.group].color}
+              stroke="#faf8f5"
+              strokeWidth={isHover ? 5 : 3}
+              paintOrder="stroke"
               textAnchor="middle"
               dominantBaseline="central"
               className="cursor-pointer font-mono"

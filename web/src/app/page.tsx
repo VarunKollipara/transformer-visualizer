@@ -6,6 +6,7 @@ import EmbeddingMap from "@/components/EmbeddingMap";
 import GenerationDemo from "@/components/GenerationDemo";
 import PipelineDiagram from "@/components/PipelineDiagram";
 import Section from "@/components/Section";
+import SectionNav from "@/components/SectionNav";
 import SoftmaxPlayground from "@/components/SoftmaxPlayground";
 import TokenizerDemo from "@/components/TokenizerDemo";
 import TrainingViz from "@/components/TrainingViz";
@@ -13,6 +14,7 @@ import TrainingViz from "@/components/TrainingViz";
 export default function Home() {
   return (
     <main className="mx-auto w-full max-w-3xl px-5 pb-24">
+      <SectionNav />
       {/* Hero */}
       <header className="py-16">
         <p className="mb-3 text-sm font-semibold uppercase tracking-widest text-indigo-600">
@@ -40,6 +42,7 @@ export default function Home() {
       <Section
         step={1}
         accent="indigo"
+        id="generation"
         title="It only does one thing"
         subtitle={
           <>
@@ -57,6 +60,7 @@ export default function Home() {
       <Section
         step={2}
         accent="amber"
+        id="corpus"
         title="What it learned from"
         subtitle={
           <>
@@ -130,6 +134,7 @@ export default function Home() {
       <Section
         step={6}
         accent="rose"
+        id="training"
         title="How it learned: watch the loss fall"
         subtitle={
           <>
@@ -168,6 +173,7 @@ export default function Home() {
       <Section
         step={8}
         accent="rose"
+        id="pipeline"
         title="Putting it together"
         subtitle={
           <>

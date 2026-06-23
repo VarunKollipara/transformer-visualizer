@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { glossary } from "@/lib/glossary";
 
-// Inline, clickable term. Click to reveal a plain-language definition popover.
-// This is the "click into anything you don't understand" mechanism.
+// Inline, clickable term. Click to reveal a plain-language definition popover;
+// click outside or press Escape to dismiss.
 export default function Concept({
   id,
   children,
@@ -13,14 +13,33 @@ export default function Concept({
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLSpanElement>(null);
   const entry = glossary[id];
 
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
   return (
-    <span className="relative inline-block">
+    <span className="relative inline-block" ref={ref}>
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="cursor-pointer rounded font-medium text-indigo-700 underline decoration-indigo-300 decoration-2 underline-offset-2 hover:bg-indigo-50 hover:text-indigo-800"
+        className={`cursor-pointer rounded font-medium text-indigo-700 underline decoration-indigo-300 decoration-2 underline-offset-2 hover:bg-indigo-50 hover:text-indigo-800 ${
+          open ? "bg-indigo-50" : ""
+        }`}
       >
         {children}
       </button>
