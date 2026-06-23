@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { getLogits, type Candidate } from "@/lib/api";
+import ExampleChips from "@/components/ExampleChips";
 
 const show = (ch: string) => (ch === " " ? "␣" : ch === "\n" ? "⏎" : ch);
 
@@ -56,6 +57,11 @@ export default function SoftmaxPlayground() {
           className="w-full rounded-lg border border-stone-300 bg-stone-50 px-4 py-2.5 font-mono text-stone-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
         />
       </label>
+
+      <ExampleChips
+        items={["To be or not to b", "the ", "Romeo", "my lor"]}
+        onPick={setContext}
+      />
 
       {error && (
         <p className="mt-3 text-sm text-amber-700">

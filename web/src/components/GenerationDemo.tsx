@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { generate, type Step } from "@/lib/api";
+import ExampleChips from "@/components/ExampleChips";
 
 const show = (ch: string) => (ch === " " ? "␣" : ch === "\n" ? "⏎" : ch);
 
@@ -69,6 +70,11 @@ export default function GenerationDemo() {
           {loading ? "Generating…" : "Generate"}
         </button>
       </div>
+
+      <ExampleChips
+        items={["ROMEO:", "JULIET:", "To be, or not", "KING RICHARD:"]}
+        onPick={setPrompt}
+      />
 
       <label className="mt-4 block">
         <span className="mb-1 flex justify-between text-sm text-stone-500">
