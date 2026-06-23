@@ -11,13 +11,14 @@ from __future__ import annotations
 import torch
 
 from src.data import get_batch, load_corpus, train_val_split
-from src.model import MiniGPT
+from src.model import GPT
 
-# --- config (small enough to train in a couple of minutes on CPU) ---
-block_size = 32       # context length (how many chars the model sees at once)
+# --- config (bigger than the minimal model; runs in ~10-15 min on CPU) ---
+block_size = 64       # context length (how many chars the model sees at once)
 batch_size = 32       # sequences processed in parallel per step
-n_embd = 64           # embedding width (C)
-head_size = 64        # attention head width
+n_embd = 128          # embedding width (C)
+num_heads = 4         # attention heads per block (head size = n_embd // num_heads)
+num_layers = 3        # number of stacked transformer blocks
 max_steps = 3000      # how many gradient steps to take
 eval_interval = 300   # how often to measure & print loss
 eval_iters = 50       # how many batches to average when measuring loss
@@ -31,7 +32,7 @@ tok, data = load_corpus()
 train_data, val_data = train_val_split(data)
 
 # --- model + optimizer ---
-model = MiniGPT(tok.vocab_size, n_embd, head_size, block_size)
+model = GPT(tok.vocab_size, n_embd, num_heads, num_layers, block_size)
 print(f"model parameters: {sum(p.numel() for p in model.parameters()):,}")
 optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
 

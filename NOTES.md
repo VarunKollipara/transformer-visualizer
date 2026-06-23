@@ -121,6 +121,54 @@ repeat. We crop the input to the last block_size tokens each step because the
 positional table only knows that many positions. Sampling (vs. always taking the
 single most-likely char) is what gives varied, non-repetitive text.
 
+### Multi-head attention
+A single head learns one way of looking back. Multi-head attention runs several
+heads in parallel so the model can track several relationships at once (one head
+might follow the previous character, another the start of the word). We split the
+n_embd width into `num_heads` heads of size `n_embd // num_heads`, run them
+independently, concatenate their outputs back to width n_embd, then apply a
+linear projection so the heads' findings can mix. Same total width and compute as
+one big head, but several specialists beat one generalist in practice. Each head
+keeps its own causal mask, so the no-peeking-ahead rule still holds.
+
+### Feed-forward layer (MLP)
+After attention gathers information *between* tokens, the feed-forward layer lets
+each token process that information *on its own*. Slogan: "attention is
+communication, the MLP is computation." Structure: Linear(n_embd -> 4*n_embd) ->
+ReLU -> Linear(4*n_embd -> n_embd). The 4x widening gives a roomy hidden layer to
+compute in; the final projection returns to width n_embd. The ReLU (max(0, x))
+is the essential **nonlinearity** — without a nonlinear step between them, two
+stacked linear layers collapse into a single linear one, limiting the model to
+straight-line relationships. Applied identically to every position (no token
+mixing). Like attention, it preserves the (B, T, n_embd) shape, which is what
+lets us stack these layers into deep blocks.
+
+### Residual connections
+Instead of `x = layer(x)`, a residual connection does `x = x + layer(x)` — each
+sublayer *adds a refinement* to the running representation rather than replacing
+it. The big payoff is training: the `+ x` gives gradients a clean, uninterrupted
+"highway" straight back through every layer, which is what makes deep stacks
+trainable (without residuals, gradients fade as they pass back through many
+layers). It also means a layer can learn to do "nothing" (output ~0) easily,
+so adding depth never hurts.
+
+### LayerNorm
+A normalization step that rescales each token's vector to mean 0 / variance 1
+(computed across its C features), then applies a learnable scale (gamma) and
+shift (beta). Purpose: keep activations at a stable, well-behaved scale as they
+flow through many layers, which keeps training stable. We use **pre-norm**:
+normalize the input *before* each sublayer (modern GPT style), e.g.
+`x = x + attention(LayerNorm(x))`.
+
+### Block and the full GPT
+A **Block** bundles the two operations with their plumbing:
+`x = x + attention(LayerNorm(x))` then `x = x + MLP(LayerNorm(x))` — communicate,
+then compute, each wrapped in a residual. Because every sublayer preserves the
+(B, T, C) shape, Blocks stack cleanly. The full **GPT** is then:
+token+positional embeddings -> a stack of N Blocks -> a final LayerNorm -> the
+linear lm_head producing logits. That's a real (if tiny) GPT; scaling it up is
+mostly making n_embd, num_heads, num_layers, block_size, and the data bigger.
+
 ---
 
 ## Phase 3 — Training

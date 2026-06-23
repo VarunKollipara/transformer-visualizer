@@ -5,7 +5,11 @@ We grow this file across Phase 2:
     [x] PositionalEmbedding position -> learnable vector
     [x] Head (self-attention)
     [x] MiniGPT             minimal end-to-end model that can train + generate
-    [ ] MultiHead, MLP, Block, LayerNorm, residuals (architecture upgrades, later)
+    [x] MultiHeadAttention  several heads in parallel
+    [x] FeedForward         per-token MLP (the "thinking" step)
+    [x] LayerNorm           per-token normalization (built by hand)
+    [x] Block               (LayerNorm -> attention -> +) then (LayerNorm -> MLP -> +)
+    [x] GPT                 embeddings -> stacked Blocks -> lm_head
 
 Nothing here uses nn.Transformer / nn.MultiheadAttention — every layer is built
 from scratch so we understand all of it.
@@ -111,6 +115,102 @@ class Head(nn.Module):
         return out
 
 
+class MultiHeadAttention(nn.Module):
+    """Several attention heads in parallel, concatenated and mixed.
+
+    One head learns a single way of looking back; multiple heads let the model
+    track several kinds of relationships at once (e.g. the previous character vs.
+    the start of the word). We split the n_embd width into `num_heads` smaller
+    heads of size n_embd // num_heads, run them in parallel, concatenate their
+    outputs back to width n_embd, then apply a linear projection to mix them.
+    """
+
+    def __init__(self, n_embd: int, num_heads: int, block_size: int) -> None:
+        super().__init__()
+        assert n_embd % num_heads == 0, "n_embd must be divisible by num_heads"
+        head_size = n_embd // num_heads
+        # nn.ModuleList registers each head so its parameters are tracked/trained.
+        self.heads = nn.ModuleList(
+            [Head(n_embd, head_size, block_size) for _ in range(num_heads)]
+        )
+        self.proj = nn.Linear(n_embd, n_embd)  # lets the heads' outputs mix
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        # Run every head on the same input x, concatenate along the channel dim.
+        out = torch.cat([head(x) for head in self.heads], dim=-1)  # (B, T, n_embd)
+        out = self.proj(out)                                       # (B, T, n_embd)
+        return out
+
+
+class FeedForward(nn.Module):
+    """Per-token MLP: each token processes its own gathered info independently.
+
+    "Attention is communication; the MLP is computation." No token mixing happens
+    here — the same little network is applied to every position on its own.
+    """
+
+    def __init__(self, n_embd: int) -> None:
+        super().__init__()
+        # nn.Sequential just chains the layers in order. Widen 4x, bend with a
+        # ReLU nonlinearity (max(0, x)), then project back to n_embd.
+        self.net = nn.Sequential(
+            nn.Linear(n_embd, 4 * n_embd),  # expand to a wider hidden layer
+            nn.ReLU(),                       # nonlinearity (without it, the two
+                                             # Linears would collapse into one)
+            nn.Linear(4 * n_embd, n_embd),  # project back to n_embd
+        )
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.net(x)  # (B, T, n_embd) -> (B, T, n_embd)
+
+
+class LayerNorm(nn.Module):
+    """Normalize each token's vector to mean 0 / variance 1, then rescale.
+
+    Built by hand. For each token (the last dim, C), subtract the mean and divide
+    by the standard deviation, so its features sit at a stable scale. Two learnable
+    parameters per channel — gamma (scale) and beta (shift) — let the model adjust
+    or undo that normalization if it helps. Keeping activations well-scaled is what
+    makes deep stacks train stably.
+    """
+
+    def __init__(self, n_embd: int, eps: float = 1e-5) -> None:
+        super().__init__()
+        self.eps = eps  # tiny constant so we never divide by zero
+        self.gamma = nn.Parameter(torch.ones(n_embd))   # learnable scale, starts at 1
+        self.beta = nn.Parameter(torch.zeros(n_embd))   # learnable shift, starts at 0
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        mean = x.mean(dim=-1, keepdim=True)                 # (B, T, 1) per-token mean
+        var = x.var(dim=-1, keepdim=True, unbiased=False)   # (B, T, 1) per-token variance
+        x_norm = (x - mean) / torch.sqrt(var + self.eps)    # normalize across channels
+        return self.gamma * x_norm + self.beta              # scale and shift
+
+
+class Block(nn.Module):
+    """One transformer block: communicate (attention), then compute (MLP).
+
+    Two important details:
+      - Residual connections: x = x + sublayer(x). Each sublayer *adds a
+        refinement* rather than replacing x, giving gradients a clean path back
+        through the whole stack (this is what makes depth trainable).
+      - Pre-norm: we LayerNorm the input *before* each sublayer (modern GPT style,
+        more stable than normalizing after).
+    """
+
+    def __init__(self, n_embd: int, num_heads: int, block_size: int) -> None:
+        super().__init__()
+        self.attn = MultiHeadAttention(n_embd, num_heads, block_size)
+        self.ffn = FeedForward(n_embd)
+        self.ln1 = LayerNorm(n_embd)
+        self.ln2 = LayerNorm(n_embd)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = x + self.attn(self.ln1(x))  # communicate, then add back (residual)
+        x = x + self.ffn(self.ln2(x))   # compute, then add back (residual)
+        return x
+
+
 class MiniGPT(nn.Module):
     """The smallest end-to-end model that can actually train and generate.
 
@@ -159,6 +259,60 @@ class MiniGPT(nn.Module):
             probs = F.softmax(logits, dim=-1)          # (B, V) next-char distribution
             next_id = torch.multinomial(probs, num_samples=1)  # (B, 1) sample one
             idx = torch.cat([idx, next_id], dim=1)     # append, then loop
+        return idx
+
+
+class GPT(nn.Module):
+    """The upgraded model: embeddings -> stacked transformer Blocks -> lm_head.
+
+    Same forward/generate contract as MiniGPT, but the single attention head is
+    replaced by `num_layers` Blocks (each = multi-head attention + MLP, with
+    residuals and LayerNorm), and a final LayerNorm sits before the lm_head.
+    """
+
+    def __init__(
+        self,
+        vocab_size: int,
+        n_embd: int,
+        num_heads: int,
+        num_layers: int,
+        block_size: int,
+    ) -> None:
+        super().__init__()
+        self.block_size = block_size
+        self.token_emb = TokenEmbedding(vocab_size, n_embd)
+        self.pos_emb = PositionalEmbedding(block_size, n_embd)
+        # nn.Sequential chains the blocks; each preserves (B, T, n_embd).
+        self.blocks = nn.Sequential(
+            *[Block(n_embd, num_heads, block_size) for _ in range(num_layers)]
+        )
+        self.ln_f = LayerNorm(n_embd)               # final norm before prediction
+        self.lm_head = nn.Linear(n_embd, vocab_size)
+
+    def forward(
+        self, idx: torch.Tensor, targets: torch.Tensor | None = None
+    ) -> tuple[torch.Tensor, torch.Tensor | None]:
+        B, T = idx.shape
+        h = self.token_emb(idx) + self.pos_emb(T)  # (B, T, C)
+        h = self.blocks(h)                         # (B, T, C)  the deep stack
+        h = self.ln_f(h)                           # (B, T, C)
+        logits = self.lm_head(h)                   # (B, T, vocab_size)
+        if targets is None:
+            return logits, None
+        B, T, V = logits.shape
+        loss = F.cross_entropy(logits.view(B * T, V), targets.view(B * T))
+        return logits, loss
+
+    @torch.no_grad()
+    def generate(self, idx: torch.Tensor, max_new_tokens: int) -> torch.Tensor:
+        """Autoregressive generation (identical loop to MiniGPT.generate)."""
+        for _ in range(max_new_tokens):
+            idx_cond = idx[:, -self.block_size :]
+            logits, _ = self(idx_cond)
+            logits = logits[:, -1, :]
+            probs = F.softmax(logits, dim=-1)
+            next_id = torch.multinomial(probs, num_samples=1)
+            idx = torch.cat([idx, next_id], dim=1)
         return idx
 
 
@@ -214,6 +368,20 @@ if __name__ == "__main__":
     assert future_is_zero, "tokens must not attend to the future (did you apply the causal mask?)"
     print("\nOK: attention rows sum to 1 and the future is masked")
 
+    # --- multi-head attention: same width, split across heads ---
+    num_heads = 4
+    mha = MultiHeadAttention(n_embd, num_heads, block_size)
+    mha_out = mha(h)
+    print(
+        f"\nmulti-head ({num_heads} heads x size {n_embd // num_heads}) "
+        f"output: {tuple(mha_out.shape)}   (B, T, n_embd)"
+    )
+
+    # --- feed-forward (per-token MLP) sanity check ---
+    ff = FeedForward(n_embd)
+    ff_out = ff(mha_out)
+    print(f"feed-forward output: {tuple(ff_out.shape)}   (B, T, n_embd)")
+
     # --- the full minimal model: loss + generation ---
     import math
 
@@ -227,3 +395,11 @@ if __name__ == "__main__":
     out_ids = model.generate(start, max_new_tokens=200)[0].tolist()
     print("\n--- untrained sample (should be gibberish) ---")
     print(tok.decode(out_ids))
+
+    # --- the upgraded GPT (multi-head + MLP + stacked blocks) builds + runs ---
+    gpt = GPT(tok.vocab_size, n_embd=64, num_heads=4, num_layers=3, block_size=block_size)
+    _, gpt_loss = gpt(xb, yb)
+    print(
+        f"\nGPT params: {sum(p.numel() for p in gpt.parameters()):,}   "
+        f"initial loss: {gpt_loss.item():.3f}   (vs MiniGPT's ~22.7K params)"
+    )

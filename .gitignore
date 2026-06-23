@@ -16,6 +16,9 @@ data/*.npy
 *.pth
 checkpoints/
 
+# Training logs
+*.log
+
 # OS / editor
 .DS_Store
 Thumbs.db
