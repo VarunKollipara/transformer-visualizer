@@ -6,7 +6,7 @@ import HeroScene from "./scenes/HeroScene";
 import TokenizeScene from "./scenes/TokenizeScene";
 import EmbeddingsScene from "./scenes/EmbeddingsScene";
 import AttentionScene from "./scenes/AttentionScene";
-import OutroScene from "./scenes/OutroScene";
+import GenerateScene from "./scenes/GenerateScene";
 import type { SceneProps } from "./scenes/types";
 
 // The whole experience is a linear sequence of fullscreen scenes. You advance by
@@ -16,7 +16,7 @@ const SCENES: { id: string; Component: ComponentType<SceneProps> }[] = [
   { id: "tokenize", Component: TokenizeScene },
   { id: "embeddings", Component: EmbeddingsScene },
   { id: "attention", Component: AttentionScene },
-  { id: "outro", Component: OutroScene },
+  { id: "generate", Component: GenerateScene },
 ];
 
 export default function Experience() {
@@ -30,6 +30,10 @@ export default function Experience() {
   const back = useCallback(() => {
     setDir(-1);
     setIndex((i) => Math.max(i - 1, 0));
+  }, []);
+  const restart = useCallback(() => {
+    setDir(-1);
+    setIndex(0);
   }, []);
 
   const { id, Component } = SCENES[index];
@@ -70,7 +74,7 @@ export default function Experience() {
             className="absolute inset-0 flex items-center justify-center overflow-y-auto px-6 py-8"
           >
             <div className="w-full max-w-3xl">
-              <Component onNext={next} onBack={back} />
+              <Component onNext={next} onBack={back} restart={restart} />
             </div>
           </motion.div>
         </AnimatePresence>

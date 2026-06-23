@@ -2,4 +2,5 @@
 export type SceneProps = {
   onNext: () => void;
   onBack: () => void;
+  restart: () => void;
 };
