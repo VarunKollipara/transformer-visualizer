@@ -113,7 +113,7 @@ export default function OpeningScene({ onNext }: SceneProps) {
         transition={
           phase === "invite"
             ? { boxShadow: { duration: 2.2, repeat: Infinity, ease: "easeInOut" } }
-            : { layout: { type: "spring", stiffness: 210, damping: 30 } }
+            : { layout: { duration: 0.9, ease: [0.22, 1, 0.36, 1] } }
         }
         className={
           phase === "invite"
@@ -125,7 +125,7 @@ export default function OpeningScene({ onNext }: SceneProps) {
           <motion.div
             key={i}
             layout
-            transition={{ type: "spring", stiffness: 240, damping: 28 }}
+            transition={{ layout: { duration: 0.85, ease: [0.22, 1, 0.36, 1], delay: i * 0.008 } }}
             whileHover={tokens ? { scale: 1.12 } : undefined}
             className={
               phase === "invite"
@@ -135,11 +135,9 @@ export default function OpeningScene({ onNext }: SceneProps) {
           >
             <motion.span
               layout="position"
-              className={
-                tokens
-                  ? "font-mono text-base leading-none text-stone-800"
-                  : "font-mono text-[15px] leading-none text-indigo-900"
-              }
+              className={`whitespace-pre font-mono leading-none ${
+                tokens ? "text-base text-stone-800" : "text-[15px] text-indigo-900"
+              }`}
             >
               {tokens ? display(ch) : ch}
             </motion.span>
@@ -148,7 +146,7 @@ export default function OpeningScene({ onNext }: SceneProps) {
               <motion.span
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                transition={{ delay: 0.2, duration: 0.3 }}
+                transition={{ delay: 0.75, duration: 0.5 }}
                 className="mt-1 font-mono text-[11px] leading-none text-sky-600"
               >
                 {stoi.get(ch) ?? "?"}
@@ -163,9 +161,9 @@ export default function OpeningScene({ onNext }: SceneProps) {
                     initial={{ scaleY: 0 }}
                     animate={{ scaleY: h }}
                     transition={{
-                      delay: 0.1 + j * 0.03,
+                      delay: 0.3 + j * 0.07,
                       type: "spring",
-                      stiffness: 320,
+                      stiffness: 220,
                       damping: 20,
                     }}
                     style={{ transformOrigin: "bottom", height: "100%" }}
