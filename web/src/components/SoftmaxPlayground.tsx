@@ -89,7 +89,7 @@ export default function SoftmaxPlayground() {
 
       {cands && (
         <div className="mt-5 space-y-2.5">
-          <div className="grid grid-cols-[2rem_1fr_1.4fr_3rem] items-center gap-3 text-xs text-stone-400">
+          <div className="grid grid-cols-[1.5rem_1fr_1.3fr_2.5rem] items-center gap-2 sm:gap-3 text-xs text-stone-400">
             <span>char</span>
             <span>logit (raw score — drag)</span>
             <span>probability after softmax</span>
@@ -98,7 +98,7 @@ export default function SoftmaxPlayground() {
           {cands.map((c, i) => (
             <div
               key={i}
-              className="grid grid-cols-[2rem_1fr_1.4fr_3rem] items-center gap-3"
+              className="grid grid-cols-[1.5rem_1fr_1.3fr_2.5rem] items-center gap-2 sm:gap-3"
             >
               <span className="text-center font-mono text-sm font-semibold text-stone-800">
                 {show(c.char)}

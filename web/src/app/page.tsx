@@ -5,7 +5,9 @@ import Concept from "@/components/Concept";
 import CorpusSample from "@/components/CorpusSample";
 import EmbeddingMap from "@/components/EmbeddingMap";
 import GenerationDemo from "@/components/GenerationDemo";
+import GoDeeper from "@/components/GoDeeper";
 import PipelineDiagram from "@/components/PipelineDiagram";
+import QKVDiagram from "@/components/QKVDiagram";
 import Section from "@/components/Section";
 import SectionNav from "@/components/SectionNav";
 import SoftmaxPlayground from "@/components/SoftmaxPlayground";
@@ -132,6 +134,23 @@ export default function Home() {
           — that place similar characters near each other, like seating party
           guests by how alike they are.
         </Aside>
+        <GoDeeper title="Why 128 dimensions — and what the 2D map hides">
+          <p>
+            Each token&apos;s embedding is a vector of 128 numbers, not 2. More
+            dimensions give the model more independent &ldquo;axes&rdquo; to
+            express how tokens differ and relate. We can&apos;t draw 128
+            dimensions, so the map above uses <strong>PCA</strong> to flatten
+            them down to the two directions that vary the most. That reveals
+            structure but loses detail — two points can look close here yet
+            differ along an axis we dropped.
+          </p>
+          <p className="mt-2">
+            The numbers start random and are tuned during training, so any
+            structure you see (uppercase apart from lowercase, punctuation
+            clustering) was <em>learned</em> purely from predicting the next
+            character.
+          </p>
+        </GoDeeper>
       </Section>
 
       <Section
@@ -157,6 +176,27 @@ export default function Home() {
           earlier letters matter to me right now? It can only ask the ones before
           it (no peeking at the answer), then blends their hints together.
         </Aside>
+        <GoDeeper title="How attention is computed (query, key, value)">
+          <QKVDiagram />
+          <p>
+            Each token is turned into three vectors by learned matrices: a{" "}
+            <strong>query</strong> (what it&apos;s looking for), a{" "}
+            <strong>key</strong> (what it offers), and a{" "}
+            <strong>value</strong> (the info it passes on). The relevance of token{" "}
+            <em>j</em> to token <em>i</em> is the dot product of i&apos;s query
+            and j&apos;s key. Those scores are divided by √(head size) to stay
+            stable, the future is masked to −∞, then softmax turns them into
+            weights that sum to 1 — and the output is the weighted sum of the
+            values.
+          </p>
+          <p className="mt-2">
+            A &ldquo;<strong>head</strong>&rdquo; is one such query/key/value set.
+            Running several in parallel (4 here) lets the model track different
+            relationships at once; their outputs are concatenated and mixed.
+            Stack a few of these attention-plus-MLP blocks and you have a
+            transformer.
+          </p>
+        </GoDeeper>
       </Section>
 
       <Section
@@ -183,6 +223,33 @@ export default function Home() {
           direction. Repeat thousands of times and the scribbles turn into
           sentences.
         </Aside>
+        <GoDeeper title="The four steps of one training iteration">
+          <ol className="list-decimal space-y-1 pl-5">
+            <li>
+              <strong>Forward</strong> — run a batch of text through the model and
+              measure the <em>loss</em>: the negative log of the probability it
+              gave the true next character.
+            </li>
+            <li>
+              <strong>Backward (backprop)</strong> — compute, for every one of the
+              ~619,000 parameters, which way to nudge it to lower the loss.
+            </li>
+            <li>
+              <strong>Step</strong> — the optimizer moves every parameter a tiny
+              amount in that direction.
+            </li>
+            <li>
+              <strong>Repeat</strong> — thousands of times, on fresh batches.
+            </li>
+          </ol>
+          <p className="mt-2">
+            We also track the loss on held-out <strong>validation</strong> text
+            the model never trains on. If training loss keeps dropping while
+            validation loss stalls, the model is memorizing rather than learning
+            — <em>overfitting</em>. Here they fall together, which is what we
+            want.
+          </p>
+        </GoDeeper>
       </Section>
 
       <Section
