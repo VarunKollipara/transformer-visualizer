@@ -119,7 +119,7 @@ export default function AttentionScene({ onNext }: SceneProps) {
         </>
       )}
 
-      <Continue onClick={onNext} label="Turn this into a prediction" delay={0.4} />
+      <Continue onClick={onNext} label="Then each token thinks for itself" delay={0.4} />
     </div>
   );
 }

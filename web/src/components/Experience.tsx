@@ -5,7 +5,13 @@ import { AnimatePresence, motion } from "motion/react";
 import OpeningScene from "./scenes/OpeningScene";
 import WhyDimensionsScene from "./scenes/WhyDimensionsScene";
 import PositionalScene from "./scenes/PositionalScene";
+import QKVScene from "./scenes/QKVScene";
 import AttentionScene from "./scenes/AttentionScene";
+import MLPScene from "./scenes/MLPScene";
+import NormResidualScene from "./scenes/NormResidualScene";
+import BlocksScene from "./scenes/BlocksScene";
+import SoftmaxScene from "./scenes/SoftmaxScene";
+import TrainingScene from "./scenes/TrainingScene";
 import GenerateScene from "./scenes/GenerateScene";
 import type { SceneProps } from "./scenes/types";
 
@@ -15,7 +21,13 @@ const SCENES: { id: string; Component: ComponentType<SceneProps> }[] = [
   { id: "opening", Component: OpeningScene },
   { id: "why-dims", Component: WhyDimensionsScene },
   { id: "positional", Component: PositionalScene },
+  { id: "qkv", Component: QKVScene },
   { id: "attention", Component: AttentionScene },
+  { id: "mlp", Component: MLPScene },
+  { id: "norm-residual", Component: NormResidualScene },
+  { id: "blocks", Component: BlocksScene },
+  { id: "softmax", Component: SoftmaxScene },
+  { id: "training", Component: TrainingScene },
   { id: "generate", Component: GenerateScene },
 ];
 
