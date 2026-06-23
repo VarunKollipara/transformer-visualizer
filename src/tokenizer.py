@@ -41,6 +41,20 @@ class CharTokenizer:
         """Turn a list of token IDs back into a string."""
         return "".join(self.itos[i] for i in ids)     # look up each id, then glue
 
+    @classmethod
+    def from_chars(cls, chars: list[str]) -> "CharTokenizer":
+        """Rebuild a tokenizer from a saved vocab (used when loading a checkpoint).
+
+        Skips __init__ (which would re-scan a corpus) since we already have the
+        exact character list the model was trained with.
+        """
+        tok = cls.__new__(cls)
+        tok.chars = list(chars)
+        tok.vocab_size = len(tok.chars)
+        tok.stoi = {ch: i for i, ch in enumerate(tok.chars)}
+        tok.itos = {i: ch for i, ch in enumerate(tok.chars)}
+        return tok
+
 
 if __name__ == "__main__":
     # --- smoke test (boilerplate; you don't need to edit this) ---

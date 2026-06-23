@@ -78,6 +78,29 @@ for step in range(max_steps + 1):
     optimizer.step()
 
 
+# --- save a checkpoint so the API / visualizer can load the trained model ---
+from pathlib import Path
+
+ckpt_dir = Path(__file__).resolve().parents[1] / "checkpoints"
+ckpt_dir.mkdir(exist_ok=True)
+ckpt_path = ckpt_dir / "gpt.pt"
+torch.save(
+    {
+        "model_state": model.state_dict(),
+        "config": {
+            "vocab_size": tok.vocab_size,
+            "n_embd": n_embd,
+            "num_heads": num_heads,
+            "num_layers": num_layers,
+            "block_size": block_size,
+        },
+        "chars": tok.chars,
+    },
+    ckpt_path,
+)
+print(f"saved checkpoint -> {ckpt_path}")
+
+
 # --- generate a sample from the trained model ---
 print("\n--- trained sample ---")
 start = torch.zeros((1, 1), dtype=torch.long)  # a single newline to start

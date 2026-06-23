@@ -1,0 +1,115 @@
+"""Load a trained GPT checkpoint and run it while exposing its internals.
+
+This is the bridge between the model and the visualizer. Beyond generating text,
+it returns the things we want to *show*: attention weights, the next-character
+probability distribution at each position, and token info.
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Any
+
+import torch
+import torch.nn.functional as F
+
+from src.model import GPT
+from src.tokenizer import CharTokenizer
+
+CKPT_PATH = Path(__file__).resolve().parents[1] / "checkpoints" / "gpt.pt"
+
+
+def load_model(ckpt_path: Path = CKPT_PATH) -> tuple[GPT, CharTokenizer, dict]:
+    """Rebuild the model + tokenizer from a saved checkpoint."""
+    ckpt = torch.load(ckpt_path, map_location="cpu")
+    cfg = ckpt["config"]
+    tok = CharTokenizer.from_chars(ckpt["chars"])
+    model = GPT(
+        vocab_size=cfg["vocab_size"],
+        n_embd=cfg["n_embd"],
+        num_heads=cfg["num_heads"],
+        num_layers=cfg["num_layers"],
+        block_size=cfg["block_size"],
+    )
+    model.load_state_dict(ckpt["model_state"])
+    model.eval()  # inference mode
+    return model, tok, cfg
+
+
+def _collect_attention(model: GPT) -> list[list[list[list[float]]]]:
+    """Read the attention weights each head saved during the last forward pass.
+
+    Returns a nested list indexed [layer][head] -> (T, T) matrix, so the frontend
+    can render one heatmap per head.
+    """
+    layers = []
+    for block in model.blocks:
+        heads = [head.att[0].tolist() for head in block.attn.heads]  # each (T, T)
+        layers.append(heads)
+    return layers
+
+
+def _topk(probs: torch.Tensor, tok: CharTokenizer, k: int) -> list[dict[str, Any]]:
+    """Top-k characters from a probability vector, as [{char, prob}, ...]."""
+    vals, idxs = torch.topk(probs, k)
+    return [{"char": tok.itos[i.item()], "prob": v.item()} for v, i in zip(vals, idxs)]
+
+
+@torch.no_grad()
+def forward_with_internals(
+    model: GPT, tok: CharTokenizer, text: str, top_k: int = 10
+) -> dict[str, Any]:
+    """Run one forward pass over `text` and return predictions + attention.
+
+    Powers the attention heatmap and the per-position probability bars.
+    """
+    if text == "":
+        text = "\n"
+    ids = tok.encode(text)[-model.block_size :]  # clip to the context window
+    idx = torch.tensor([ids], dtype=torch.long)  # (1, T)
+    logits, _ = model(idx)                        # (1, T, V); also fills head.att
+    probs = F.softmax(logits[0], dim=-1)          # (T, V)
+
+    positions = [
+        {"char": tok.itos[ids[t]], "topk": _topk(probs[t], tok, top_k)}
+        for t in range(len(ids))
+    ]
+    return {
+        "tokens": [tok.itos[i] for i in ids],
+        "positions": positions,
+        "attention": _collect_attention(model),  # [layer][head] -> (T, T)
+        "num_layers": len(model.blocks),
+        "num_heads": len(model.blocks[0].attn.heads),
+    }
+
+
+@torch.no_grad()
+def generate(
+    model: GPT,
+    tok: CharTokenizer,
+    prompt: str = "",
+    max_new_tokens: int = 200,
+    temperature: float = 1.0,
+    top_k: int = 10,
+) -> dict[str, Any]:
+    """Autoregressive generation, returning each step's choice and the top-k it
+    sampled from. `temperature` sharpens (<1) or flattens (>1) the distribution.
+    """
+    if prompt == "":
+        prompt = "\n"
+    ids = tok.encode(prompt)
+    start = len(ids)
+    steps = []
+    for _ in range(max_new_tokens):
+        idx = torch.tensor([ids[-model.block_size :]], dtype=torch.long)
+        logits, _ = model(idx)
+        logits = logits[0, -1, :] / max(temperature, 1e-6)  # (V,) last position
+        probs = F.softmax(logits, dim=-1)
+        next_id = int(torch.multinomial(probs, num_samples=1).item())
+        steps.append({"char": tok.itos[next_id], "topk": _topk(probs, tok, top_k)})
+        ids.append(next_id)
+    return {
+        "prompt": prompt,
+        "generated": tok.decode(ids[start:]),
+        "steps": steps,
+    }

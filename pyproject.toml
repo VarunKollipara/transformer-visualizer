@@ -5,8 +5,10 @@ description = "A from-scratch, character-level GPT-style transformer with an int
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "fastapi>=0.138.0",
     "numpy>=1.26",
     "torch>=2.12.1",  # core ML library: tensors, autograd, the neural-net layers
+    "uvicorn[standard]>=0.49.0",
 ]
 
 [dependency-groups]
