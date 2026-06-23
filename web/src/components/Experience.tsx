@@ -4,6 +4,7 @@ import { useCallback, useState, type ComponentType } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import HeroScene from "./scenes/HeroScene";
 import TokenizeScene from "./scenes/TokenizeScene";
+import EmbeddingsScene from "./scenes/EmbeddingsScene";
 import OutroScene from "./scenes/OutroScene";
 import type { SceneProps } from "./scenes/types";
 
@@ -12,6 +13,7 @@ import type { SceneProps } from "./scenes/types";
 const SCENES: { id: string; Component: ComponentType<SceneProps> }[] = [
   { id: "hero", Component: HeroScene },
   { id: "tokenize", Component: TokenizeScene },
+  { id: "embeddings", Component: EmbeddingsScene },
   { id: "outro", Component: OutroScene },
 ];
 
