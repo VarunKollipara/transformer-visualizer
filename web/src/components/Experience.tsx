@@ -2,8 +2,7 @@
 
 import { useCallback, useState, type ComponentType } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import HeroScene from "./scenes/HeroScene";
-import TokenizeScene from "./scenes/TokenizeScene";
+import OpeningScene from "./scenes/OpeningScene";
 import EmbeddingsScene from "./scenes/EmbeddingsScene";
 import AttentionScene from "./scenes/AttentionScene";
 import GenerateScene from "./scenes/GenerateScene";
@@ -12,8 +11,7 @@ import type { SceneProps } from "./scenes/types";
 // The whole experience is a linear sequence of fullscreen scenes. You advance by
 // interacting; we never scroll the page — like an interactive movie.
 const SCENES: { id: string; Component: ComponentType<SceneProps> }[] = [
-  { id: "hero", Component: HeroScene },
-  { id: "tokenize", Component: TokenizeScene },
+  { id: "opening", Component: OpeningScene },
   { id: "embeddings", Component: EmbeddingsScene },
   { id: "attention", Component: AttentionScene },
   { id: "generate", Component: GenerateScene },
@@ -67,10 +65,10 @@ export default function Experience() {
           <motion.div
             key={id}
             custom={dir}
-            initial={{ opacity: 0, x: dir * 36 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: dir * -36 }}
-            transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+            initial={{ opacity: 0, y: dir * 28, scale: 0.985 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: dir * -28, scale: 0.985 }}
+            transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
             className="absolute inset-0 flex items-center justify-center overflow-y-auto px-6 py-8"
           >
             <div className="w-full max-w-3xl">
