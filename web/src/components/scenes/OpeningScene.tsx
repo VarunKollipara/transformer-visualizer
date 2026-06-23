@@ -113,7 +113,7 @@ export default function OpeningScene({ onNext }: SceneProps) {
         transition={
           phase === "invite"
             ? { boxShadow: { duration: 2.2, repeat: Infinity, ease: "easeInOut" } }
-            : { layout: { type: "spring", stiffness: 340, damping: 34 } }
+            : { layout: { type: "spring", stiffness: 210, damping: 30 } }
         }
         className={
           phase === "invite"
@@ -125,7 +125,7 @@ export default function OpeningScene({ onNext }: SceneProps) {
           <motion.div
             key={i}
             layout
-            transition={{ type: "spring", stiffness: 380, damping: 30 }}
+            transition={{ type: "spring", stiffness: 240, damping: 28 }}
             whileHover={tokens ? { scale: 1.12 } : undefined}
             className={
               phase === "invite"

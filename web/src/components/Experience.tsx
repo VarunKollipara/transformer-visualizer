@@ -3,6 +3,8 @@
 import { useCallback, useState, type ComponentType } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import OpeningScene from "./scenes/OpeningScene";
+import WhyDimensionsScene from "./scenes/WhyDimensionsScene";
+import PositionalScene from "./scenes/PositionalScene";
 import AttentionScene from "./scenes/AttentionScene";
 import GenerateScene from "./scenes/GenerateScene";
 import type { SceneProps } from "./scenes/types";
@@ -11,6 +13,8 @@ import type { SceneProps } from "./scenes/types";
 // interacting; we never scroll the page — like an interactive movie.
 const SCENES: { id: string; Component: ComponentType<SceneProps> }[] = [
   { id: "opening", Component: OpeningScene },
+  { id: "why-dims", Component: WhyDimensionsScene },
+  { id: "positional", Component: PositionalScene },
   { id: "attention", Component: AttentionScene },
   { id: "generate", Component: GenerateScene },
 ];
@@ -66,7 +70,7 @@ export default function Experience() {
             initial={{ opacity: 0, y: dir * 28, scale: 0.985 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: dir * -28, scale: 0.985 }}
-            transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
             className="absolute inset-0 flex items-center justify-center overflow-y-auto px-6 py-8"
           >
             <div className="w-full max-w-3xl">
