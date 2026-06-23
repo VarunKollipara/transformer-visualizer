@@ -54,11 +54,19 @@ def estimate_loss() -> dict[str, float]:
 
 
 # --- training loop ---
+history: list[dict] = []   # loss curve over time
+samples: list[dict] = []   # what the model generates at each checkpoint
+sample_seed = torch.zeros((1, 1), dtype=torch.long)  # generate from a newline
+
 for step in range(max_steps + 1):
     # every so often, measure and report progress on train + val
     if step % eval_interval == 0:
         losses = estimate_loss()
         print(f"step {step:5d} | train loss {losses['train']:.3f} | val loss {losses['val']:.3f}")
+        history.append({"step": step, "train": losses["train"], "val": losses["val"]})
+        # capture a short generation so we can *watch* the model learn to write
+        sample_ids = model.generate(sample_seed, max_new_tokens=160)[0].tolist()
+        samples.append({"step": step, "text": tok.decode(sample_ids)})
 
     # grab one fresh batch of training data
     xb, yb = get_batch(train_data, block_size, batch_size)
@@ -99,6 +107,27 @@ torch.save(
     ckpt_path,
 )
 print(f"saved checkpoint -> {ckpt_path}")
+
+# Save the training history + sample generations for the "watch it learn" viz.
+import json
+
+(ckpt_dir / "history.json").write_text(
+    json.dumps(
+        {
+            "history": history,
+            "samples": samples,
+            "config": {
+                "n_embd": n_embd,
+                "num_heads": num_heads,
+                "num_layers": num_layers,
+                "block_size": block_size,
+                "max_steps": max_steps,
+                "params": sum(p.numel() for p in model.parameters()),
+            },
+        }
+    )
+)
+print(f"saved training history -> {ckpt_dir / 'history.json'}")
 
 
 # --- generate a sample from the trained model ---

@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --background: #09090b;
-  --foreground: #e4e4e7;
+  --background: #faf8f5; /* warm paper */
+  --foreground: #1c1917; /* stone-900 */
 }
 
 @theme inline {
@@ -10,10 +10,16 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-lora);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), system-ui, Arial, sans-serif;
+}
+
+/* Serif display face for headings — gives an editorial, "textbook" feel. */
+.font-display {
+  font-family: var(--font-lora), Georgia, "Times New Roman", serif;
 }

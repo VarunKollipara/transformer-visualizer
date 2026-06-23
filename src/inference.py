@@ -7,16 +7,20 @@ probability distribution at each position, and token info.
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 import torch
 import torch.nn.functional as F
 
 from src.model import GPT
 from src.tokenizer import CharTokenizer
 
-CKPT_PATH = Path(__file__).resolve().parents[1] / "checkpoints" / "gpt.pt"
+CKPT_DIR = Path(__file__).resolve().parents[1] / "checkpoints"
+CKPT_PATH = CKPT_DIR / "gpt.pt"
+HISTORY_PATH = CKPT_DIR / "history.json"
 
 
 def load_model(ckpt_path: Path = CKPT_PATH) -> tuple[GPT, CharTokenizer, dict]:
@@ -113,3 +117,45 @@ def generate(
         "generated": tok.decode(ids[start:]),
         "steps": steps,
     }
+
+
+@torch.no_grad()
+def embeddings_2d(model: GPT, tok: CharTokenizer) -> dict[str, Any]:
+    """Project the learned token-embedding table down to 2D (via PCA) for a map.
+
+    Each token is a point; tokens the model treats similarly land near each other.
+    """
+    weight = model.token_emb.table.detach().numpy()      # (V, C)
+    centered = weight - weight.mean(axis=0, keepdims=True)
+    # PCA: the top-2 right singular directions capture the most variance.
+    _, _, vt = np.linalg.svd(centered, full_matrices=False)
+    coords = centered @ vt[:2].T                          # (V, 2)
+
+    # scale to a tidy [-1, 1] box for plotting
+    span = np.abs(coords).max(axis=0)
+    span[span == 0] = 1.0
+    coords = coords / span
+
+    points = []
+    for i, ch in enumerate(tok.chars):
+        if ch == " ":
+            group = "space"
+        elif ch == "\n":
+            group = "newline"
+        elif ch.isalpha():
+            group = "upper" if ch.isupper() else "lower"
+        elif ch.isdigit():
+            group = "digit"
+        else:
+            group = "punct"
+        points.append(
+            {"id": i, "char": ch, "x": float(coords[i, 0]), "y": float(coords[i, 1]), "group": group}
+        )
+    return {"points": points}
+
+
+def load_history() -> dict[str, Any]:
+    """Read the saved training history (loss curve + sample generations)."""
+    if not HISTORY_PATH.exists():
+        raise FileNotFoundError(HISTORY_PATH)
+    return json.loads(HISTORY_PATH.read_text())

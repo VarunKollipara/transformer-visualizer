@@ -20,16 +20,16 @@ export default function Concept({
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="cursor-pointer font-medium text-emerald-400 underline decoration-dotted underline-offset-2 hover:text-emerald-300"
+        className="cursor-pointer rounded font-medium text-indigo-700 underline decoration-indigo-300 decoration-2 underline-offset-2 hover:bg-indigo-50 hover:text-indigo-800"
       >
         {children}
       </button>
       {open && entry && (
         <span
-          className="absolute left-1/2 top-full z-20 mt-2 block w-72 -translate-x-1/2 rounded-lg border border-zinc-700 bg-zinc-900 p-3 text-left text-sm font-normal leading-relaxed text-zinc-200 shadow-xl"
+          className="absolute left-1/2 top-full z-30 mt-2 block w-72 -translate-x-1/2 rounded-xl border border-stone-200 bg-white p-3.5 text-left text-sm font-normal leading-relaxed text-stone-600 shadow-lg shadow-stone-300/40"
           role="tooltip"
         >
-          <span className="mb-1 block font-semibold text-emerald-400">
+          <span className="mb-1 block font-semibold text-indigo-700">
             {entry.title}
           </span>
           {entry.body}

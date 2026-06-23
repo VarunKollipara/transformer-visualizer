@@ -71,3 +71,20 @@ def generate(req: GenerateRequest):
     return inference.generate(
         model, tok, req.prompt, req.max_new_tokens, req.temperature, req.top_k
     )
+
+
+@app.get("/api/embeddings")
+def embeddings():
+    model, tok, _ = get_model()
+    return inference.embeddings_2d(model, tok)
+
+
+@app.get("/api/training")
+def training():
+    try:
+        return inference.load_history()
+    except FileNotFoundError:
+        raise HTTPException(
+            status_code=503,
+            detail="No training history yet. Run `uv run python -m scripts.train`.",
+        )

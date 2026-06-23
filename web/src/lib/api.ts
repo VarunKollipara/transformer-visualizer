@@ -70,3 +70,32 @@ export const generate = (
     temperature,
     top_k,
   });
+
+export type EmbeddingPoint = {
+  id: number;
+  char: string;
+  x: number;
+  y: number;
+  group: "upper" | "lower" | "digit" | "punct" | "space" | "newline";
+};
+export type EmbeddingsResponse = { points: EmbeddingPoint[] };
+
+export const getEmbeddings = () =>
+  getJSON<EmbeddingsResponse>("/api/embeddings");
+
+export type LossPoint = { step: number; train: number; val: number };
+export type SamplePoint = { step: number; text: string };
+export type TrainingResponse = {
+  history: LossPoint[];
+  samples: SamplePoint[];
+  config: {
+    n_embd: number;
+    num_heads: number;
+    num_layers: number;
+    block_size: number;
+    max_steps: number;
+    params: number;
+  };
+};
+
+export const getTraining = () => getJSON<TrainingResponse>("/api/training");

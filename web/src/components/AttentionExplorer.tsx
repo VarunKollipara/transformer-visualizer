@@ -29,17 +29,17 @@ export default function AttentionExplorer() {
   }, [text]);
 
   return (
-    <div>
+    <div className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
       <input
         value={text}
         onChange={(e) => setText(e.target.value)}
         maxLength={64}
-        className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2.5 font-mono text-zinc-100 outline-none focus:border-emerald-500"
+        className="w-full rounded-lg border border-stone-300 bg-stone-50 px-4 py-2.5 font-mono text-stone-900 outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-200"
         placeholder="Type text to see where each character looks…"
       />
 
       {error && (
-        <p className="mt-3 text-sm text-amber-300">
+        <p className="mt-3 text-sm text-amber-700">
           Backend not reachable — start the API server (see banner at top).
         </p>
       )}
@@ -47,36 +47,20 @@ export default function AttentionExplorer() {
       {data && (
         <>
           <div className="mt-4 flex flex-wrap items-center gap-4 text-sm">
-            <label className="flex items-center gap-2 text-zinc-400">
+            <label className="flex items-center gap-2 text-stone-500">
               Layer
-              <select
+              <Select
                 value={layer}
-                onChange={(e) => setLayer(+e.target.value)}
-                className="rounded border border-zinc-700 bg-zinc-900 px-2 py-1 text-zinc-100"
-              >
-                {Array.from({ length: data.num_layers }, (_, i) => (
-                  <option key={i} value={i}>
-                    {i}
-                  </option>
-                ))}
-              </select>
+                count={data.num_layers}
+                onChange={setLayer}
+              />
             </label>
-            <label className="flex items-center gap-2 text-zinc-400">
+            <label className="flex items-center gap-2 text-stone-500">
               Head
-              <select
-                value={head}
-                onChange={(e) => setHead(+e.target.value)}
-                className="rounded border border-zinc-700 bg-zinc-900 px-2 py-1 text-zinc-100"
-              >
-                {Array.from({ length: data.num_heads }, (_, i) => (
-                  <option key={i} value={i}>
-                    {i}
-                  </option>
-                ))}
-              </select>
+              <Select value={head} count={data.num_heads} onChange={setHead} />
             </label>
-            <span className="text-zinc-500">
-              rows = the querying token · columns = what it looks at
+            <span className="text-stone-400">
+              row = the asking token · column = what it looks at
             </span>
           </div>
 
@@ -99,6 +83,30 @@ export default function AttentionExplorer() {
   );
 }
 
+function Select({
+  value,
+  count,
+  onChange,
+}: {
+  value: number;
+  count: number;
+  onChange: (n: number) => void;
+}) {
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(+e.target.value)}
+      className="rounded-md border border-stone-300 bg-white px-2 py-1 text-stone-800"
+    >
+      {Array.from({ length: count }, (_, i) => (
+        <option key={i} value={i}>
+          {i}
+        </option>
+      ))}
+    </select>
+  );
+}
+
 function Heatmap({
   tokens,
   matrix,
@@ -118,19 +126,16 @@ function Heatmap({
         className="grid w-max gap-px"
         style={{ gridTemplateColumns: `${cell}px repeat(${T}, ${cell}px)` }}
       >
-        {/* corner */}
         <div style={{ width: cell, height: cell }} />
-        {/* top labels (keys) */}
         {tokens.map((ch, j) => (
           <div
             key={`c${j}`}
-            className="flex items-center justify-center font-mono text-xs text-zinc-500"
+            className="flex items-center justify-center font-mono text-xs text-stone-400"
             style={{ width: cell, height: cell }}
           >
             {show(ch)}
           </div>
         ))}
-        {/* rows */}
         {matrix.map((row, i) => (
           <Row
             key={`r${i}`}
@@ -166,7 +171,7 @@ function Row({
     <>
       <div
         className={`flex cursor-pointer items-center justify-center font-mono text-xs ${
-          selected ? "text-emerald-400" : "text-zinc-500"
+          selected ? "font-bold text-teal-700" : "text-stone-400"
         }`}
         style={{ width: cell, height: cell }}
         onClick={() => onSelect(i)}
@@ -178,13 +183,13 @@ function Row({
           key={j}
           onClick={() => onSelect(i)}
           title={`${(v * 100).toFixed(0)}% attention`}
-          className={`cursor-pointer rounded-[2px] ${
-            selected ? "ring-1 ring-emerald-400/40" : ""
+          className={`cursor-pointer rounded-[2px] border border-stone-100 ${
+            selected ? "ring-1 ring-teal-400" : ""
           }`}
           style={{
             width: cell,
             height: cell,
-            backgroundColor: `rgba(16, 185, 129, ${v})`,
+            backgroundColor: `rgba(13, 148, 136, ${v})`,
           }}
         />
       ))}
@@ -192,30 +197,36 @@ function Row({
   );
 }
 
-function Predictions({ token, topk }: { token: string; topk: { char: string; prob: number }[] }) {
+function Predictions({
+  token,
+  topk,
+}: {
+  token: string;
+  topk: { char: string; prob: number }[];
+}) {
   const max = Math.max(...topk.map((t) => t.prob), 0.0001);
   return (
-    <div className="mt-6 rounded-lg border border-zinc-800 bg-zinc-900/50 p-4">
-      <p className="mb-3 text-sm text-zinc-400">
+    <div className="mt-6 rounded-xl border border-stone-200 bg-stone-50 p-4">
+      <p className="mb-3 text-sm text-stone-600">
         After{" "}
-        <span className="font-mono text-emerald-400">
-          “{show(token)}”
+        <span className="rounded bg-teal-100 px-1.5 py-0.5 font-mono text-teal-800">
+          {show(token)}
         </span>{" "}
         the model predicts the next character:
       </p>
       <div className="space-y-1.5">
         {topk.map((t, i) => (
           <div key={i} className="flex items-center gap-2">
-            <span className="w-6 text-right font-mono text-sm text-zinc-300">
+            <span className="w-6 text-right font-mono text-sm text-stone-700">
               {show(t.char)}
             </span>
-            <div className="h-4 flex-1 overflow-hidden rounded bg-zinc-800">
+            <div className="h-4 flex-1 overflow-hidden rounded bg-stone-200">
               <div
-                className="h-full rounded bg-emerald-500"
+                className="h-full rounded bg-teal-500"
                 style={{ width: `${(t.prob / max) * 100}%` }}
               />
             </div>
-            <span className="w-12 text-right font-mono text-xs text-zinc-400">
+            <span className="w-12 text-right font-mono text-xs text-stone-500">
               {(t.prob * 100).toFixed(1)}%
             </span>
           </div>

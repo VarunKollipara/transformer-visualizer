@@ -56,4 +56,16 @@ export const glossary: Record<string, GlossaryEntry> = {
     title: "Training",
     body: "Repeating four steps thousands of times: predict (forward), measure wrongness (loss), compute how to improve every parameter (backprop), and nudge them downhill (optimizer step). The model's 'knowledge' is just the final settings of its parameters.",
   },
+  parameter: {
+    title: "Parameter",
+    body: "One of the model's tunable numbers — a 'dial'. Ours has about 619,000; large models have hundreds of billions. They start random and meaningless; training slowly sets them so the model predicts well. The trained model IS just these numbers.",
+  },
+  vector: {
+    title: "Vector",
+    body: "Just a list of numbers, e.g. [0.2, -1.1, 0.7, …]. The model represents each token as a vector so it can do math on meaning: similar things end up as nearby vectors, and 'nearby' is something a computer can measure.",
+  },
+  overfitting: {
+    title: "Overfitting",
+    body: "When a model memorizes the training text instead of learning general patterns. You catch it by holding out a 'validation' slice the model never trains on: if training loss keeps dropping but validation loss stops, it's memorizing.",
+  },
 };

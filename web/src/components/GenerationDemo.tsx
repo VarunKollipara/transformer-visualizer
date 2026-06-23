@@ -51,29 +51,29 @@ export default function GenerationDemo() {
   const max = current ? Math.max(...current.topk.map((t) => t.prob), 0.0001) : 1;
 
   return (
-    <div>
+    <div className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
         <label className="flex-1">
-          <span className="mb-1 block text-sm text-zinc-400">Prompt</span>
+          <span className="mb-1 block text-sm text-stone-500">Prompt</span>
           <input
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
-            className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2.5 font-mono text-zinc-100 outline-none focus:border-emerald-500"
+            className="w-full rounded-lg border border-stone-300 bg-stone-50 px-4 py-2.5 font-mono text-stone-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
           />
         </label>
         <button
           onClick={run}
           disabled={loading}
-          className="rounded-lg bg-emerald-500 px-5 py-2.5 font-semibold text-zinc-950 hover:bg-emerald-400 disabled:opacity-50"
+          className="rounded-lg bg-indigo-600 px-5 py-2.5 font-semibold text-white shadow-sm hover:bg-indigo-500 disabled:opacity-50"
         >
           {loading ? "Generating…" : "Generate"}
         </button>
       </div>
 
       <label className="mt-4 block">
-        <span className="mb-1 flex justify-between text-sm text-zinc-400">
+        <span className="mb-1 flex justify-between text-sm text-stone-500">
           <span>Temperature</span>
-          <span className="font-mono text-emerald-400">
+          <span className="font-mono font-semibold text-indigo-700">
             {temperature.toFixed(2)}
           </span>
         </span>
@@ -84,43 +84,47 @@ export default function GenerationDemo() {
           step={0.05}
           value={temperature}
           onChange={(e) => setTemperature(+e.target.value)}
-          className="w-full accent-emerald-500"
+          className="w-full accent-indigo-600"
         />
-        <span className="mt-1 block text-xs text-zinc-500">
-          Lower = safer & more repetitive · higher = more varied & more mistakes
+        <span className="mt-1 block text-xs text-stone-400">
+          Lower = safer &amp; more repetitive · higher = more varied &amp; more
+          mistakes
         </span>
       </label>
 
       {error && (
-        <p className="mt-3 text-sm text-amber-300">
+        <p className="mt-3 text-sm text-amber-700">
           Backend not reachable — start the API server (see banner at top).
         </p>
       )}
 
       {steps && (
         <div className="mt-5 grid gap-4 sm:grid-cols-[1fr_auto]">
-          <div className="min-h-40 whitespace-pre-wrap rounded-lg border border-zinc-800 bg-zinc-900/50 p-4 font-mono text-sm leading-relaxed text-zinc-200">
-            <span className="text-emerald-400">{prompt}</span>
-            {steps.slice(0, revealed).map((s) => s.char).join("")}
+          <div className="min-h-40 whitespace-pre-wrap rounded-xl border border-stone-200 bg-stone-50 p-4 font-mono text-sm leading-relaxed text-stone-800">
+            <span className="font-semibold text-indigo-700">{prompt}</span>
+            {steps
+              .slice(0, revealed)
+              .map((s) => s.char)
+              .join("")}
             {revealed < steps.length && (
-              <span className="animate-pulse text-emerald-400">▋</span>
+              <span className="animate-pulse text-indigo-500">▋</span>
             )}
           </div>
 
           {current && (
             <div className="w-full sm:w-56">
-              <p className="mb-2 text-xs text-zinc-500">
+              <p className="mb-2 text-xs text-stone-400">
                 distribution for this character
               </p>
               <div className="space-y-1">
                 {current.topk.map((t, i) => (
                   <div key={i} className="flex items-center gap-2">
-                    <span className="w-5 text-right font-mono text-xs text-zinc-300">
+                    <span className="w-5 text-right font-mono text-xs text-stone-600">
                       {show(t.char)}
                     </span>
-                    <div className="h-3 flex-1 overflow-hidden rounded bg-zinc-800">
+                    <div className="h-3 flex-1 overflow-hidden rounded bg-stone-200">
                       <div
-                        className="h-full bg-emerald-500"
+                        className="h-full bg-indigo-500"
                         style={{ width: `${(t.prob / max) * 100}%` }}
                       />
                     </div>
