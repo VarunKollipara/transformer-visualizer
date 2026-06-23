@@ -4,6 +4,7 @@ import AttentionExplorer from "@/components/AttentionExplorer";
 import Concept from "@/components/Concept";
 import CorpusSample from "@/components/CorpusSample";
 import EmbeddingMap from "@/components/EmbeddingMap";
+import FlowConnector from "@/components/FlowConnector";
 import GenerationDemo from "@/components/GenerationDemo";
 import GoDeeper from "@/components/GoDeeper";
 import PipelineDiagram from "@/components/PipelineDiagram";
@@ -42,6 +43,11 @@ export default function Home() {
         </div>
       </header>
 
+      <FlowConnector>
+        First, watch the finished model write. Then we&apos;ll take it apart to
+        see how it does it.
+      </FlowConnector>
+
       <Section
         step={1}
         accent="indigo"
@@ -65,6 +71,11 @@ export default function Home() {
         </Aside>
       </Section>
 
+      <FlowConnector>
+        It writes by guessing one character at a time — but where did that skill
+        come from? It all begins with the text the model was shown.
+      </FlowConnector>
+
       <Section
         step={2}
         accent="amber"
@@ -86,6 +97,17 @@ export default function Home() {
           couldn&apos;t tell you today&apos;s date. That&apos;s exactly our model.
         </Aside>
       </Section>
+
+      <FlowConnector
+        artifact={
+          <span className="font-mono text-sm">
+            &quot;First Citizen&quot; <span className="text-stone-400">→</span> ?
+          </span>
+        }
+      >
+        The model can&apos;t read letters, though. So the very first thing it does
+        is turn that text into numbers.
+      </FlowConnector>
 
       <Section
         step={3}
@@ -109,6 +131,18 @@ export default function Home() {
           model only ever deals with locker numbers.
         </Aside>
       </Section>
+
+      <FlowConnector
+        artifact={
+          <span className="font-mono text-sm">
+            <span className="text-sky-600">[18, 47, 56, …]</span>{" "}
+            <span className="text-stone-400">→</span> ?
+          </span>
+        }
+      >
+        Now we have IDs — but a number like <span className="font-mono">42</span>{" "}
+        is just a label with no meaning. So each ID becomes a rich vector.
+      </FlowConnector>
 
       <Section
         step={4}
@@ -152,6 +186,11 @@ export default function Home() {
           </p>
         </GoDeeper>
       </Section>
+
+      <FlowConnector>
+        Every token is a vector now. The next step is letting those vectors share
+        information — so each one can take context from the others.
+      </FlowConnector>
 
       <Section
         step={5}
@@ -198,6 +237,11 @@ export default function Home() {
           </p>
         </GoDeeper>
       </Section>
+
+      <FlowConnector>
+        But all of this machinery starts out random and useless. It only works
+        because of one long process: training.
+      </FlowConnector>
 
       <Section
         step={6}
@@ -252,6 +296,11 @@ export default function Home() {
         </GoDeeper>
       </Section>
 
+      <FlowConnector>
+        Once trained, the model outputs a score for every possible next
+        character. The final step: turn those scores into a single choice.
+      </FlowConnector>
+
       <Section
         step={7}
         accent="indigo"
@@ -275,6 +324,11 @@ export default function Home() {
           (more random) or more rigged toward the current favorite.
         </Aside>
       </Section>
+
+      <FlowConnector>
+        …and that chosen character is added to the text, which feeds back to the
+        start. You&apos;ve now seen every piece — here&apos;s the whole loop.
+      </FlowConnector>
 
       <Section
         step={8}

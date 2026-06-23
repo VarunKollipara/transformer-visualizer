@@ -23,3 +23,23 @@ body {
 .font-display {
   font-family: var(--font-lora), Georgia, "Times New Roman", serif;
 }
+
+/* Flowing dashes down the connector lines — the "water cycle" motion that shows
+   one step feeding into the next. */
+@keyframes flow-down {
+  from {
+    stroke-dashoffset: 0;
+  }
+  to {
+    stroke-dashoffset: -20;
+  }
+}
+.flow-line {
+  stroke-dasharray: 3 7;
+  animation: flow-down 0.9s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .flow-line {
+    animation: none;
+  }
+}
