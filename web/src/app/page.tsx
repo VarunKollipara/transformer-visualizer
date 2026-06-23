@@ -2,7 +2,6 @@ import ApiStatus from "@/components/ApiStatus";
 import Aside from "@/components/Aside";
 import AttentionExplorer from "@/components/AttentionExplorer";
 import Concept from "@/components/Concept";
-import CorpusSample from "@/components/CorpusSample";
 import EmbeddingMap from "@/components/EmbeddingMap";
 import FlowConnector from "@/components/FlowConnector";
 import GenerationDemo from "@/components/GenerationDemo";
@@ -12,6 +11,7 @@ import QKVDiagram from "@/components/QKVDiagram";
 import Section from "@/components/Section";
 import SectionNav from "@/components/SectionNav";
 import SoftmaxPlayground from "@/components/SoftmaxPlayground";
+import TokenizationScene from "@/components/TokenizationScene";
 import TokenizerDemo from "@/components/TokenizerDemo";
 import TrainingViz from "@/components/TrainingViz";
 
@@ -85,12 +85,12 @@ export default function Home() {
           <>
             The model has no built-in knowledge. Everything it can do comes from
             one pile of text it was shown during{" "}
-            <Concept id="training">training</Concept> — for us, the complete works
-            of Shakespeare:
+            <Concept id="training">training</Concept> — the complete works of
+            Shakespeare. Click any line to watch how the model reads it:
           </>
         }
       >
-        <CorpusSample />
+        <TokenizationScene />
         <Aside>
           imagine a person who has only ever read Shakespeare — no school, no
           internet, nothing else. They&apos;d soak up his words and rhythm, but
@@ -98,28 +98,22 @@ export default function Home() {
         </Aside>
       </Section>
 
-      <FlowConnector
-        artifact={
-          <span className="font-mono text-sm">
-            &quot;First Citizen&quot; <span className="text-stone-400">→</span> ?
-          </span>
-        }
-      >
-        The model can&apos;t read letters, though. So the very first thing it does
-        is turn that text into numbers.
+      <FlowConnector>
+        That was one line. The model does this to <em>every</em> character — and
+        it works on any text, not just Shakespeare.
       </FlowConnector>
 
       <Section
         step={3}
         accent="sky"
         id="tokens"
-        title="Turning text into numbers"
+        title="Try it on your own words"
         subtitle={
           <>
-            Computers do math, not letters. So each character becomes a{" "}
-            <Concept id="token">token</Concept> — a number — using a fixed{" "}
-            <Concept id="vocabulary">vocabulary</Concept> of the 65 characters in
-            the text. Type anything and watch it convert:
+            Type anything below. Each character maps to its{" "}
+            <Concept id="token">token</Concept> ID from the fixed{" "}
+            <Concept id="vocabulary">vocabulary</Concept> of 65 characters — the
+            same lookup you just watched, now live:
           </>
         }
       >
