@@ -1,4 +1,5 @@
 import ApiStatus from "@/components/ApiStatus";
+import Aside from "@/components/Aside";
 import AttentionExplorer from "@/components/AttentionExplorer";
 import Concept from "@/components/Concept";
 import CorpusSample from "@/components/CorpusSample";
@@ -55,6 +56,11 @@ export default function Home() {
         }
       >
         <GenerationDemo />
+        <Aside>
+          it&apos;s like extreme autocomplete. The model has no plan for the
+          sentence — it just guesses the next single character that feels likely,
+          adds it, then re-reads everything and guesses again.
+        </Aside>
       </Section>
 
       <Section
@@ -72,6 +78,11 @@ export default function Home() {
         }
       >
         <CorpusSample />
+        <Aside>
+          imagine a person who has only ever read Shakespeare — no school, no
+          internet, nothing else. They&apos;d soak up his words and rhythm, but
+          couldn&apos;t tell you today&apos;s date. That&apos;s exactly our model.
+        </Aside>
       </Section>
 
       <Section
@@ -89,6 +100,12 @@ export default function Home() {
         }
       >
         <TokenizerDemo />
+        <Aside>
+          computers can&apos;t &ldquo;see&rdquo; letters, only numbers. So we give
+          every character a numbered locker — <span className="font-mono">a</span>
+          →39, <span className="font-mono">b</span>→40 — and from here on the
+          model only ever deals with locker numbers.
+        </Aside>
       </Section>
 
       <Section
@@ -109,6 +126,12 @@ export default function Home() {
         }
       >
         <EmbeddingMap />
+        <Aside>
+          a locker number says nothing about what&apos;s inside. So each character
+          also gets a list of traits — numbers the model makes up during training
+          — that place similar characters near each other, like seating party
+          guests by how alike they are.
+        </Aside>
       </Section>
 
       <Section
@@ -129,6 +152,11 @@ export default function Home() {
         }
       >
         <AttentionExplorer />
+        <Aside>
+          to guess the next letter, each position &ldquo;asks around&rdquo;: which
+          earlier letters matter to me right now? It can only ask the ones before
+          it (no peeking at the answer), then blends their hints together.
+        </Aside>
       </Section>
 
       <Section
@@ -149,6 +177,12 @@ export default function Home() {
         }
       >
         <TrainingViz />
+        <Aside>
+          at first the model scribbles nonsense. Each round it&apos;s told how
+          wrong it was and tweaks its ~619,000 dials a hair in the right
+          direction. Repeat thousands of times and the scribbles turn into
+          sentences.
+        </Aside>
       </Section>
 
       <Section
@@ -168,6 +202,11 @@ export default function Home() {
         }
       >
         <SoftmaxPlayground />
+        <Aside>
+          think of a spin-the-wheel where each possible next letter gets a slice.
+          Bigger score = bigger slice. <em>Temperature</em> makes the wheel fairer
+          (more random) or more rigged toward the current favorite.
+        </Aside>
       </Section>
 
       <Section
