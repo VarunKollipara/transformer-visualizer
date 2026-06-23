@@ -73,6 +73,17 @@ def generate(req: GenerateRequest):
     )
 
 
+class LogitsRequest(BaseModel):
+    text: str
+    top_k: int = 8
+
+
+@app.post("/api/logits")
+def logits(req: LogitsRequest):
+    model, tok, _ = get_model()
+    return inference.next_logits(model, tok, req.text, req.top_k)
+
+
 @app.get("/api/embeddings")
 def embeddings():
     model, tok, _ = get_model()

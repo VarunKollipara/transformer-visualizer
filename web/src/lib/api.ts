@@ -99,3 +99,9 @@ export type TrainingResponse = {
 };
 
 export const getTraining = () => getJSON<TrainingResponse>("/api/training");
+
+export type Candidate = { char: string; logit: number };
+export type LogitsResponse = { context: string; candidates: Candidate[] };
+
+export const getLogits = (text: string, top_k = 8) =>
+  postJSON<LogitsResponse>("/api/logits", { text, top_k });

@@ -4,7 +4,9 @@ import Concept from "@/components/Concept";
 import CorpusSample from "@/components/CorpusSample";
 import EmbeddingMap from "@/components/EmbeddingMap";
 import GenerationDemo from "@/components/GenerationDemo";
+import PipelineDiagram from "@/components/PipelineDiagram";
 import Section from "@/components/Section";
+import SoftmaxPlayground from "@/components/SoftmaxPlayground";
 import TokenizerDemo from "@/components/TokenizerDemo";
 import TrainingViz from "@/components/TrainingViz";
 
@@ -71,6 +73,7 @@ export default function Home() {
       <Section
         step={3}
         accent="sky"
+        id="tokens"
         title="Turning text into numbers"
         subtitle={
           <>
@@ -87,6 +90,7 @@ export default function Home() {
       <Section
         step={4}
         accent="violet"
+        id="embeddings"
         title="Giving each token meaning"
         subtitle={
           <>
@@ -106,6 +110,7 @@ export default function Home() {
       <Section
         step={5}
         accent="teal"
+        id="attention"
         title="Letting tokens look at each other"
         subtitle={
           <>
@@ -144,41 +149,40 @@ export default function Home() {
       <Section
         step={7}
         accent="indigo"
-        title="Putting it together"
+        id="choice"
+        title="From scores to a choice"
         subtitle={
           <>
-            That&apos;s the whole machine: text → tokens → vectors → attention
-            blocks → a guess for the next character. The model&apos;s raw scores (
-            <Concept id="logits">logits</Concept>) become probabilities via{" "}
-            <Concept id="softmax">softmax</Concept>; one is picked (how boldly is
-            set by <Concept id="temperature">temperature</Concept>), appended, and
-            the loop runs again.
+            At each step the model outputs a raw score —{" "}
+            <Concept id="logits">logits</Concept> — for every possible next
+            character. <Concept id="softmax">Softmax</Concept> turns those into
+            probabilities, and <Concept id="temperature">temperature</Concept>{" "}
+            controls how boldly it chooses. These are the model&apos;s{" "}
+            <em>real</em> scores — drag things and watch the choice reshape:
           </>
         }
       >
-        <div className="rounded-2xl border border-stone-200 bg-white p-6 shadow-sm">
-          <ol className="space-y-2 text-[15px] text-stone-700">
-            {[
-              "Read the text so far as token IDs",
-              "Turn each token into a learned vector (+ its position)",
-              "Attention + MLP blocks mix in context",
-              "Produce a probability for every possible next character",
-              "Sample one character, append it, and repeat",
-            ].map((s, i) => (
-              <li key={i} className="flex gap-3">
-                <span className="font-mono font-semibold text-indigo-600">
-                  {i + 1}.
-                </span>
-                {s}
-              </li>
-            ))}
-          </ol>
-          <p className="mt-4 text-sm text-stone-500">
-            Scale this up — more data, more parameters, bigger context — and you
-            get ChatGPT. The ideas on this page are the same; only the numbers
-            change.
-          </p>
-        </div>
+        <SoftmaxPlayground />
+      </Section>
+
+      <Section
+        step={8}
+        accent="rose"
+        title="Putting it together"
+        subtitle={
+          <>
+            That&apos;s the whole machine, end to end. Click any stage to jump
+            back to it:
+          </>
+        }
+      >
+        <PipelineDiagram />
+        <p className="mt-5 text-[15px] leading-relaxed text-stone-600">
+          Scale this up — far more data, billions of{" "}
+          <Concept id="parameter">parameters</Concept>, a much longer context —
+          and you get ChatGPT. The ideas on this page are exactly the same; only
+          the numbers change.
+        </p>
       </Section>
 
       <footer className="mt-8 border-t border-stone-200 pt-8 text-sm text-stone-400">

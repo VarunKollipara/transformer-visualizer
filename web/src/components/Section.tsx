@@ -14,18 +14,20 @@ export default function Section({
   step,
   title,
   accent = "indigo",
+  id,
   subtitle,
   children,
 }: {
   step: number;
   title: string;
   accent?: keyof typeof ACCENTS;
+  id?: string;
   subtitle?: React.ReactNode;
   children: React.ReactNode;
 }) {
   const a = ACCENTS[accent] ?? ACCENTS.indigo;
   return (
-    <section className="mx-auto w-full max-w-3xl scroll-mt-8 py-12">
+    <section id={id} className="mx-auto w-full max-w-3xl scroll-mt-8 py-12">
       <div className={`mb-6 h-px w-full ${a.rule}`} />
       <div className="mb-6">
         <div className="mb-3 flex items-center gap-3">

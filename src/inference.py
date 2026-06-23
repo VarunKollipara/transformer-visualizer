@@ -120,6 +120,31 @@ def generate(
 
 
 @torch.no_grad()
+def next_logits(
+    model: GPT, tok: CharTokenizer, text: str, top_k: int = 8
+) -> dict[str, Any]:
+    """Return the raw (pre-softmax) logits for the most likely next characters.
+
+    Powers the softmax/temperature playground: the user starts from the model's
+    real scores, then reshapes them client-side.
+    """
+    if text == "":
+        text = "\n"
+    ids = tok.encode(text)[-model.block_size :]
+    idx = torch.tensor([ids], dtype=torch.long)
+    logits, _ = model(idx)
+    last = logits[0, -1, :]  # (V,) raw scores for the next character
+    vals, idxs = torch.topk(last, top_k)
+    return {
+        "context": text,
+        "candidates": [
+            {"char": tok.itos[int(i.item())], "logit": float(v.item())}
+            for v, i in zip(vals, idxs)
+        ],
+    }
+
+
+@torch.no_grad()
 def embeddings_2d(model: GPT, tok: CharTokenizer) -> dict[str, Any]:
     """Project the learned token-embedding table down to 2D (via PCA) for a map.
 
