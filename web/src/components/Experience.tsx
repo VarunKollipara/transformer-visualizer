@@ -3,7 +3,6 @@
 import { useCallback, useState, type ComponentType } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import OpeningScene from "./scenes/OpeningScene";
-import EmbeddingsScene from "./scenes/EmbeddingsScene";
 import AttentionScene from "./scenes/AttentionScene";
 import GenerateScene from "./scenes/GenerateScene";
 import type { SceneProps } from "./scenes/types";
@@ -12,7 +11,6 @@ import type { SceneProps } from "./scenes/types";
 // interacting; we never scroll the page — like an interactive movie.
 const SCENES: { id: string; Component: ComponentType<SceneProps> }[] = [
   { id: "opening", Component: OpeningScene },
-  { id: "embeddings", Component: EmbeddingsScene },
   { id: "attention", Component: AttentionScene },
   { id: "generate", Component: GenerateScene },
 ];
