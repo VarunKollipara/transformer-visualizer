@@ -3,7 +3,6 @@
 import { useCallback, useState, type ComponentType } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import OpeningScene from "./scenes/OpeningScene";
-import WhyDimensionsScene from "./scenes/WhyDimensionsScene";
 import PositionQueryScene from "./scenes/PositionQueryScene";
 import MLPScene from "./scenes/MLPScene";
 import NormResidualScene from "./scenes/NormResidualScene";
@@ -17,7 +16,6 @@ import type { SceneProps } from "./scenes/types";
 // interacting; we never scroll the page — like an interactive movie.
 const SCENES: { id: string; Component: ComponentType<SceneProps> }[] = [
   { id: "opening", Component: OpeningScene },
-  { id: "why-dims", Component: WhyDimensionsScene },
   { id: "position-query", Component: PositionQueryScene },
   { id: "mlp", Component: MLPScene },
   { id: "norm-residual", Component: NormResidualScene },
