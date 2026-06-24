@@ -29,24 +29,39 @@ const SCENES: { id: string; Component: ComponentType<SceneProps> }[] = [
   { id: "generate", Component: GenerateScene },
 ];
 
+// Each screen gets its OWN entrance/exit motion, so no two transitions feel the
+// same. (Boundaries that share an object also morph it centrally, inside the
+// scene components.)
+type V = Record<string, number>;
+const VARIANTS: Record<string, { initial: V; exit: V }> = {
+  opening: { initial: { opacity: 0, scale: 0.94 }, exit: { opacity: 0, scale: 1.05 } },
+  "why-dims": { initial: { opacity: 0, y: 48 }, exit: { opacity: 0, y: -48 } },
+  "position-query": { initial: { opacity: 0, x: 72 }, exit: { opacity: 0, x: -72 } },
+  attention: { initial: { opacity: 0, scale: 1.08 }, exit: { opacity: 0, scale: 0.94 } },
+  mlp: { initial: { opacity: 0, x: -72 }, exit: { opacity: 0, x: 72 } },
+  "norm-residual": { initial: { opacity: 0, y: 48 }, exit: { opacity: 0, y: -48 } },
+  blocks: { initial: { opacity: 0, y: 64 }, exit: { opacity: 0, y: -32 } },
+  softmax: { initial: { opacity: 0, x: 72 }, exit: { opacity: 0, x: -72 } },
+  training: { initial: { opacity: 0, scale: 0.9 }, exit: { opacity: 0, scale: 1.05 } },
+  generate: { initial: { opacity: 0, y: 52 }, exit: { opacity: 0, y: -52 } },
+};
+const DEFAULT_VARIANT = { initial: { opacity: 0, y: 40 }, exit: { opacity: 0, y: -40 } };
+
 export default function Experience() {
   const [index, setIndex] = useState(0);
-  const [dir, setDir] = useState(1);
 
   const next = useCallback(() => {
-    setDir(1);
     setIndex((i) => Math.min(i + 1, SCENES.length - 1));
   }, []);
   const back = useCallback(() => {
-    setDir(-1);
     setIndex((i) => Math.max(i - 1, 0));
   }, []);
   const restart = useCallback(() => {
-    setDir(-1);
     setIndex(0);
   }, []);
 
   const { id, Component } = SCENES[index];
+  const variant = VARIANTS[id] ?? DEFAULT_VARIANT;
 
   return (
     <div className="relative flex h-[100svh] w-full flex-col overflow-hidden">
@@ -73,14 +88,13 @@ export default function Experience() {
 
       {/* scene stage */}
       <main className="relative flex-1">
-        <AnimatePresence mode="wait" custom={dir}>
+        <AnimatePresence mode="wait">
           <motion.div
             key={id}
-            custom={dir}
-            initial={{ opacity: 0, y: dir * 40, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: dir * -40, scale: 0.98 }}
-            transition={{ duration: 0.85, ease: [0.22, 1, 0.36, 1] }}
+            initial={variant.initial}
+            animate={{ opacity: 1, x: 0, y: 0, scale: 1 }}
+            exit={variant.exit}
+            transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
             className="absolute inset-0 flex items-center justify-center overflow-y-auto px-6 py-8"
           >
             <div className="w-full max-w-3xl">
