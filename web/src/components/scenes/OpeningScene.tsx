@@ -117,8 +117,8 @@ export default function OpeningScene({ onNext }: SceneProps) {
         }
         className={
           phase === "invite"
-            ? "mx-auto mt-2 flex max-w-xl cursor-pointer flex-wrap justify-start rounded-lg border border-indigo-300 bg-indigo-50 px-4 py-2"
-            : "mx-auto mt-6 flex max-w-2xl flex-wrap justify-center gap-1.5"
+            ? "mx-auto mt-2 flex max-w-xl cursor-pointer flex-wrap justify-start rounded-lg border border-indigo-300 bg-indigo-50 px-4 py-2 transition-colors duration-500"
+            : "mx-auto mt-6 flex max-w-2xl flex-wrap justify-center gap-1.5 rounded-lg border border-transparent bg-transparent transition-colors duration-500"
         }
       >
         {chars.map((ch, i) => (
