@@ -6,6 +6,13 @@ import Continue from "./Continue";
 import { SceneText, SceneTitle } from "./ui";
 import type { SceneProps } from "./types";
 
+// Directional enter so each phase change feels deliberate, not a plain crossfade.
+const enter = {
+  initial: { opacity: 0, y: 16 },
+  animate: { opacity: 1, y: 0 },
+  transition: { duration: 0.45, ease: [0.22, 1, 0.36, 1] as const },
+};
+
 // x and the layer's small edit, so x' = x + edit is only a nudge away from x.
 const X = [0.55, 0.35, 0.7, 0.45, 0.6, 0.4, 0.5, 0.65];
 const EDIT = [0.08, -0.06, 0.05, 0.1, -0.04, 0.07, -0.05, 0.06];
@@ -22,7 +29,7 @@ export default function NormResidualScene({ onNext }: SceneProps) {
 
   return (
     <div className="text-center">
-      <motion.div key={phase} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
+      <motion.div key={`t-${phase}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
         {phase === "residual" ? (
           <>
             <SceneTitle>Trick 1: add, don&apos;t overwrite</SceneTitle>
@@ -37,7 +44,8 @@ export default function NormResidualScene({ onNext }: SceneProps) {
             <SceneTitle>Trick 2: keep the numbers tidy</SceneTitle>
             <SceneText>
               The second: after each step, <strong className="text-stone-700">
-              LayerNorm</strong> rescales a token&apos;s numbers back to a steady,
+              LayerNorm</strong> (<strong className="text-stone-700">layer
+              normalization</strong>) rescales a token&apos;s numbers back to a steady,
               even range — so values don&apos;t snowball as they pass through layer
               after layer.
             </SceneText>
@@ -47,7 +55,7 @@ export default function NormResidualScene({ onNext }: SceneProps) {
 
       {/* ── RESIDUAL phase ── */}
       {phase === "residual" && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}>
+        <motion.div key="residual" {...enter}>
           <div className="mx-auto mt-7 max-w-xl rounded-xl border border-stone-200 bg-white p-5">
             <div className="flex items-center justify-center gap-2 font-mono text-sm">
               <span className="rounded bg-stone-100 px-2 py-1">x</span>
@@ -111,7 +119,7 @@ export default function NormResidualScene({ onNext }: SceneProps) {
 
       {/* ── LAYERNORM phase ── */}
       {phase === "layernorm" && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}>
+        <motion.div key="layernorm" {...enter}>
           <div className="mx-auto mt-7 max-w-xl rounded-xl border border-stone-200 bg-white p-5">
             <p className="mb-3 text-sm text-stone-500">
               One token&apos;s vector. Some numbers are big, some small, all over the

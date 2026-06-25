@@ -166,7 +166,7 @@ export default function BlocksSoftmaxScene({ onNext }: SceneProps) {
 
       {/* ── STACK phase: the label + tower beneath the prediction panel ── */}
       {phase === "stack" && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}>
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}>
           <p className="mt-1.5 text-[11px] text-stone-400">
             next-character prediction — one bar per possible character
           </p>

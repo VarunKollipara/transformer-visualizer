@@ -63,18 +63,26 @@ export default function Experience() {
         <span className="text-sm font-semibold tracking-tight text-stone-500">
           How an AI actually works
         </span>
-        <div className="flex items-center gap-1.5">
+        {/* clickable progress: each dot jumps to that scene */}
+        <div className="flex items-center">
           {SCENES.map((s, i) => (
-            <span
+            <button
               key={s.id}
-              className={`h-1.5 rounded-full transition-all duration-300 ${
-                i === index
-                  ? "w-6 bg-indigo-600"
-                  : i < index
-                    ? "w-1.5 bg-indigo-300"
-                    : "w-1.5 bg-stone-200"
-              }`}
-            />
+              onClick={() => setIndex(i)}
+              aria-label={`Go to scene ${i + 1}`}
+              aria-current={i === index ? "step" : undefined}
+              className="group flex items-center px-1 py-2"
+            >
+              <span
+                className={`h-1.5 rounded-full transition-all duration-300 ${
+                  i === index
+                    ? "w-6 bg-indigo-600"
+                    : i < index
+                      ? "w-1.5 bg-indigo-300 group-hover:w-3 group-hover:bg-indigo-400"
+                      : "w-1.5 bg-stone-200 group-hover:w-3 group-hover:bg-stone-300"
+                }`}
+              />
+            </button>
           ))}
         </div>
       </header>
