@@ -22,8 +22,8 @@ const NORM = [0.55, 0.35, 0.75, 0.45, 0.65, 0.4, 0.52, 0.82, 0.42, 0.6];
 
 type Phase = "residual" | "layernorm";
 
-export default function NormResidualScene({ onNext }: SceneProps) {
-  const [phase, setPhase] = useState<Phase>("residual");
+export default function NormResidualScene({ phase: phaseProp, onNext }: SceneProps) {
+  const phase = phaseProp as Phase;
   const [normalized, setNormalized] = useState(false);
   const bars = normalized ? NORM : RAW;
 
@@ -113,7 +113,7 @@ export default function NormResidualScene({ onNext }: SceneProps) {
             go dozens of layers deep without falling apart.
           </SceneText>
 
-          <Continue onClick={() => setPhase("layernorm")} label="And the second trick" delay={0.4} />
+          <Continue onClick={onNext} label="And the second trick" delay={0.4} />
         </motion.div>
       )}
 

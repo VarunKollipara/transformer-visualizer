@@ -28,8 +28,8 @@ const FALLBACK: Candidate[] = [
 
 type Phase = "stack" | "logits" | "softmax";
 
-export default function BlocksSoftmaxScene({ onNext }: SceneProps) {
-  const [phase, setPhase] = useState<Phase>("stack");
+export default function BlocksSoftmaxScene({ phase: phaseProp, onNext }: SceneProps) {
+  const phase = phaseProp as Phase;
   const [layers, setLayers] = useState(3);
   const [cands, setCands] = useState<Candidate[] | null>(null);
   const [temp, setTemp] = useState(1);
@@ -262,10 +262,10 @@ export default function BlocksSoftmaxScene({ onNext }: SceneProps) {
       )}
 
       {phase === "stack" && (
-        <Continue onClick={() => setPhase("logits")} label="Score every possible next character" delay={0.3} />
+        <Continue onClick={onNext} label="Score every possible next character" delay={0.3} />
       )}
       {phase === "logits" && (
-        <Continue onClick={() => setPhase("softmax")} label="Make them real probabilities" delay={0.2} />
+        <Continue onClick={onNext} label="Make them real probabilities" delay={0.2} />
       )}
       {phase === "softmax" && (
         <Continue onClick={onNext} label="But first — how did it learn all this?" delay={0.2} />

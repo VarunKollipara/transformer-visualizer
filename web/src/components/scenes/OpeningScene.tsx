@@ -53,10 +53,10 @@ const PAD = 18;
 const sx = (x: number) => PAD + ((x + 1) / 2) * (W - 2 * PAD);
 const sy = (y: number) => PAD + (1 - (y + 1) / 2) * (H - 2 * PAD);
 
-export default function OpeningScene({ onNext }: SceneProps) {
+export default function OpeningScene({ phase: phaseProp, onNext }: SceneProps) {
+  const phase = phaseProp as Phase;
   const [vocab, setVocab] = useState<string[] | null>(null);
   const [points, setPoints] = useState<EmbeddingPoint[] | null>(null);
-  const [phase, setPhase] = useState<Phase>("invite");
   const [dims, setDims] = useState<1 | 2 | 128>(128);
 
   useEffect(() => {
@@ -104,7 +104,7 @@ export default function OpeningScene({ onNext }: SceneProps) {
       <motion.div
         layout
         role={phase === "invite" ? "button" : undefined}
-        onClick={() => phase === "invite" && setPhase("tokens")}
+        onClick={() => phase === "invite" && onNext()}
         animate={
           phase === "invite"
             ? {
@@ -207,7 +207,7 @@ export default function OpeningScene({ onNext }: SceneProps) {
             fixed list of 65. This is{" "}
             <strong className="text-stone-700">tokenization</strong>.
           </p>
-          <Continue onClick={() => setPhase("vectors")} label="Now give them meaning" delay={0.4} />
+          <Continue onClick={onNext} label="Now give them meaning" delay={0.4} />
         </motion.div>
       )}
 
@@ -234,7 +234,7 @@ export default function OpeningScene({ onNext }: SceneProps) {
               })}
             </svg>
           )}
-          <Continue onClick={() => setPhase("dims")} label="Why so many numbers?" delay={0.3} />
+          <Continue onClick={onNext} label="Why so many numbers?" delay={0.3} />
         </motion.div>
       )}
 

@@ -98,11 +98,12 @@ function FitPlot({ bent, title }: { bent: boolean; title: string }) {
 // its own MLP — what used to be a hard cut between two slides.
 type Phase = "order" | "qkv" | "attention" | "think" | "widen" | "relu";
 
-export default function PositionQueryScene({ onNext }: SceneProps) {
-  const [phase, setPhase] = useState<Phase>("order");
+export default function PositionQueryScene({ phase: phaseProp, onNext }: SceneProps) {
+  const phase = phaseProp as Phase;
   const [swapped, setSwapped] = useState(false);
   const [data, setData] = useState<ForwardResponse | null>(null);
-  const [query, setQuery] = useState<number | null>(null);
+  // preset so the attention phase works even when jumped to directly
+  const [query, setQuery] = useState<number | null>(LINE.length - 1);
   const [x, setX] = useState(-0.6);
   const reluY = Math.max(0, x);
 
@@ -127,11 +128,6 @@ export default function PositionQueryScene({ onNext }: SceneProps) {
     () => (row && query !== null ? Math.max(...row.filter((_, j) => j <= query)) : 1),
     [row, query],
   );
-
-  const goAttention = () => {
-    setQuery(LINE.length - 1);
-    setPhase("attention");
-  };
 
   return (
     <div className="text-center">
@@ -324,7 +320,7 @@ export default function PositionQueryScene({ onNext }: SceneProps) {
             The <em>same</em> little network runs on every token separately, like
             handing each one its own small calculator. Let&apos;s open one up.
           </p>
-          <Continue onClick={() => setPhase("widen")} label="Look inside the MLP" delay={0.3} />
+          <Continue onClick={onNext} label="Look inside the MLP" delay={0.3} />
         </motion.div>
       )}
 
@@ -354,7 +350,7 @@ export default function PositionQueryScene({ onNext }: SceneProps) {
             then summarises what it found back into the standard 128. But between the
             two, one crucial thing has to happen.
           </SceneText>
-          <Continue onClick={() => setPhase("relu")} label="The crucial bend" delay={0.4} />
+          <Continue onClick={onNext} label="The crucial bend" delay={0.4} />
         </motion.div>
       )}
 
@@ -410,9 +406,9 @@ export default function PositionQueryScene({ onNext }: SceneProps) {
       )}
 
       {/* per-phase advance buttons for the attention half */}
-      {phase === "order" && <Continue onClick={() => setPhase("qkv")} label="Now: how it looks around" delay={0.2} />}
-      {phase === "qkv" && <Continue onClick={goAttention} label="See it on the whole line" delay={0.9} />}
-      {phase === "attention" && <Continue onClick={() => setPhase("think")} label="Then each token thinks for itself" delay={0.4} />}
+      {phase === "order" && <Continue onClick={onNext} label="Now: how it looks around" delay={0.2} />}
+      {phase === "qkv" && <Continue onClick={onNext} label="See it on the whole line" delay={0.9} />}
+      {phase === "attention" && <Continue onClick={onNext} label="Then each token thinks for itself" delay={0.4} />}
     </div>
   );
 }
