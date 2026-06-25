@@ -1,5 +1,6 @@
 "use client";
 
+import { motion } from "motion/react";
 import TrainingViz from "@/components/TrainingViz";
 import Continue from "./Continue";
 import { SceneText, SceneTitle } from "./ui";
@@ -19,9 +20,14 @@ export default function TrainingScene({ onNext }: SceneProps) {
         random noise turn into Shakespeare:
       </SceneText>
 
-      <div className="mx-auto mt-6 max-w-2xl text-left">
+      <motion.div
+        initial={{ opacity: 0, y: 18 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.25, duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+        className="mx-auto mt-6 max-w-2xl text-left"
+      >
         <TrainingViz />
-      </div>
+      </motion.div>
 
       <SceneText delay={0.2} className="mt-5 text-[15px]">
         We also watch the loss on text the model never trains on. If it kept

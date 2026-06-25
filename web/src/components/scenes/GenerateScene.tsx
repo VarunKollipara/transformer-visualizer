@@ -61,9 +61,9 @@ export default function GenerateScene({ restart }: SceneProps) {
         Finally — the model writes
       </motion.h2>
       <motion.p
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.2 }}
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
         className="mx-auto mt-2 max-w-xl text-stone-500"
       >
         The model turns its scores into probabilities, picks the next character
@@ -71,7 +71,12 @@ export default function GenerateScene({ restart }: SceneProps) {
         adds it, and repeats. Give it a prompt and watch the loop run.
       </motion.p>
 
-      <div className="mx-auto mt-6 flex max-w-xl flex-col gap-3 sm:flex-row sm:items-end">
+      <motion.div
+        initial={{ opacity: 0, y: 14 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.35, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+        className="mx-auto mt-6 flex max-w-xl flex-col gap-3 sm:flex-row sm:items-end"
+      >
         <label className="flex-1 text-left">
           <span className="mb-1 block text-sm text-stone-500">Prompt</span>
           <input
@@ -87,9 +92,14 @@ export default function GenerateScene({ restart }: SceneProps) {
         >
           {loading ? "Running…" : "Run the model"}
         </button>
-      </div>
+      </motion.div>
 
-      <label className="mx-auto mt-3 block max-w-xl text-left">
+      <motion.label
+        initial={{ opacity: 0, y: 14 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.45, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+        className="mx-auto mt-3 block max-w-xl text-left"
+      >
         <span className="mb-1 flex justify-between text-sm text-stone-500">
           <span>Temperature</span>
           <span className="font-mono font-semibold text-indigo-700">
@@ -105,10 +115,15 @@ export default function GenerateScene({ restart }: SceneProps) {
           onChange={(e) => setTemperature(+e.target.value)}
           className="w-full accent-indigo-600"
         />
-      </label>
+      </motion.label>
 
       {steps && (
-        <div className="mx-auto mt-5 grid max-w-2xl gap-4 text-left sm:grid-cols-[1fr_12rem]">
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+          className="mx-auto mt-5 grid max-w-2xl gap-4 text-left sm:grid-cols-[1fr_12rem]"
+        >
           <div className="min-h-36 whitespace-pre-wrap rounded-xl border border-stone-200 bg-stone-50 p-4 font-mono text-sm leading-relaxed text-stone-800">
             <span className="font-semibold text-indigo-700">{prompt}</span>
             {steps.slice(0, revealed).map((s) => s.char).join("")}
@@ -134,7 +149,7 @@ export default function GenerateScene({ restart }: SceneProps) {
               </div>
             </div>
           )}
-        </div>
+        </motion.div>
       )}
 
       {done && (

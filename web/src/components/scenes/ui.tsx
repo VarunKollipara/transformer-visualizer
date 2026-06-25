@@ -26,9 +26,9 @@ export function SceneText({
 }) {
   return (
     <motion.p
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ delay, duration: 0.45 }}
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
       className={`mx-auto max-w-xl leading-relaxed text-stone-500 ${className}`}
     >
       {children}

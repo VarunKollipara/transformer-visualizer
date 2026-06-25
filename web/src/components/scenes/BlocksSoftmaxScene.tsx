@@ -99,7 +99,7 @@ export default function BlocksSoftmaxScene({ onNext }: SceneProps) {
 
       {/* chart caption (chart phases only) */}
       {onChart && (
-        <motion.p key={`cap-${phase}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }} className="mt-4 text-[13px] text-stone-400">
+        <motion.p key={`cap-${phase}`} initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }} className="mt-4 text-[13px] text-stone-400">
           {phase === "logits"
             ? "the model's raw scores — taller = more favoured"
             : "exaggerate the gaps, then normalise → probabilities"}
@@ -134,9 +134,9 @@ export default function BlocksSoftmaxScene({ onNext }: SceneProps) {
                 {/* value above: logit -> percentage (chart phases only) */}
                 {onChart && (
                   <motion.span
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.25, duration: 0.3 }}
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.25, duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
                     className="mb-1 font-mono text-[11px] text-stone-500"
                   >
                     {phase === "logits" ? c.logit.toFixed(1) : `${(probs[i] * 100).toFixed(0)}%`}
@@ -221,9 +221,9 @@ export default function BlocksSoftmaxScene({ onNext }: SceneProps) {
       {/* logits-phase note */}
       {phase === "logits" && (
         <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.3 }}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
           className="mx-auto mt-4 max-w-md text-[15px] text-stone-500"
         >
           Real scores after{" "}

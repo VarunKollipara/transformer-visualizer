@@ -81,7 +81,7 @@ export default function PositionQueryScene({ onNext }: SceneProps) {
 
       {/* dog/man demo — order only */}
       {phase === "order" && (
-        <div>
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}>
           <div className="mt-5 flex items-center justify-center gap-2 font-mono text-lg">
             {words.map((w) => (
               <motion.span key={w} layout transition={{ type: "spring", stiffness: 240, damping: 26 }}
@@ -97,7 +97,7 @@ export default function PositionQueryScene({ onNext }: SceneProps) {
             So we add a <strong className="text-stone-700">position</strong> to each
             token&apos;s vector. Take the first token:
           </p>
-        </div>
+        </motion.div>
       )}
 
       {/* the shared tiles — tile 0 ("T") morphs through all three phases */}
@@ -162,7 +162,7 @@ export default function PositionQueryScene({ onNext }: SceneProps) {
 
       {/* attention note */}
       {phase === "attention" && (
-        <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }} className="mx-auto mt-5 max-w-lg text-sm text-stone-400">
+        <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4, duration: 0.5, ease: [0.22, 1, 0.36, 1] }} className="mx-auto mt-5 max-w-lg text-sm text-stone-400">
           It can only look left — never at the future. This is one of several
           &ldquo;heads&rdquo;, each learning a different pattern.
         </motion.p>

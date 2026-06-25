@@ -91,10 +91,10 @@ export default function OpeningScene({ onNext }: SceneProps) {
 
       {phase === "invite" && (
         <>
-          <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.35 }} className="mt-3 text-stone-500">
+          <motion.p initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }} className="mt-3 text-stone-500">
             Trained on nothing but the complete works of Shakespeare.
           </motion.p>
-          <motion.p initial={{ opacity: 0 }} animate={{ opacity: 0.45 }} className="mx-auto mt-10 max-w-xl text-left font-mono text-[15px] text-stone-400">
+          <motion.p initial={{ opacity: 0, y: 8 }} animate={{ opacity: 0.45, y: 0 }} transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }} className="mx-auto mt-10 max-w-xl text-left font-mono text-[15px] text-stone-400">
             HAMLET:
           </motion.p>
         </>
@@ -150,9 +150,9 @@ export default function OpeningScene({ onNext }: SceneProps) {
 
             {phase === "tokens" && (
               <motion.span
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.75, duration: 0.5 }}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.75, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
                 className="mt-1 font-mono text-[11px] leading-none text-sky-600"
               >
                 {stoi.get(ch) ?? "?"}
@@ -188,7 +188,7 @@ export default function OpeningScene({ onNext }: SceneProps) {
 
       {/* invite helper text */}
       {phase === "invite" && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}>
           {CONTEXT_BELOW.map((l) => (
             <p key={l} className="mx-auto mt-2 max-w-xl text-left font-mono text-[15px] text-stone-300">
               {l}
