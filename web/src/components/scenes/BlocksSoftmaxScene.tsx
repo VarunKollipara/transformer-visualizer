@@ -14,16 +14,17 @@ function softmax(logits: number[], t: number): number[] {
   const temp = Math.max(t, 0.01);
   const s = logits.map((l) => l / temp); // 1. divide every score by temperature
   const m = Math.max(...s); // (shift for numerical stability — doesn't change the result)
-  const e = s.map((x) => Math.exp(x - m)); // 2. exponentiate: makes everything positive, exaggerates gaps
+  const e = s.map((x) => Math.exp(x - m)); // 2. exponentiate: positive + exaggerates gaps
   const sum = e.reduce((a, b) => a + b, 0);
   return e.map((x) => x / sum); // 3. divide by the total so they sum to 1 (100%)
 }
 
-// A deterministic little "final vector" — the strip that rises out of the tower.
-const FINAL_VEC = Array.from(
-  { length: 16 },
-  (_, j) => 0.3 + 0.65 * Math.abs(Math.sin(j * 1.7 + 0.6)),
-);
+// Used only if the backend is offline, so the visual still tells the story.
+const FALLBACK: Candidate[] = [
+  { char: "e", logit: 9.6 }, { char: "u", logit: 7.0 }, { char: "r", logit: 7.0 },
+  { char: "l", logit: 6.9 }, { char: "a", logit: 6.7 }, { char: "i", logit: 6.7 },
+  { char: "y", logit: 6.1 }, { char: "o", logit: 6.0 },
+];
 
 type Phase = "stack" | "logits" | "softmax";
 
@@ -40,15 +41,16 @@ export default function BlocksSoftmaxScene({ onNext }: SceneProps) {
       .catch(() => {});
   }, []);
 
-  const logits = useMemo(() => cands?.map((c) => c.logit) ?? [], [cands]);
+  const data = cands ?? FALLBACK;
+  const logits = useMemo(() => data.map((c) => c.logit), [data]);
   const probs = useMemo(() => softmax(logits, temp), [logits, temp]);
 
-  // Heights share one rule: taller = more favoured. Softmax is monotonic in the
-  // logit, so the bars keep their order — only the GAPS between them change.
-  const lo = logits.length ? Math.min(...logits) : 0;
-  const hi = logits.length ? Math.max(...logits) : 1;
+  // One height rule across phases: taller = more favoured. Softmax is monotonic
+  // in the logit, so the bars keep their order — only the GAPS change.
+  const lo = Math.min(...logits);
+  const hi = Math.max(...logits);
   const logitH = (l: number) => 0.14 + 0.86 * (hi === lo ? 0.5 : (l - lo) / (hi - lo));
-  const maxProb = probs.length ? Math.max(...probs) : 1;
+  const maxProb = Math.max(...probs);
 
   const onChart = phase === "logits" || phase === "softmax";
 
@@ -63,25 +65,26 @@ export default function BlocksSoftmaxScene({ onNext }: SceneProps) {
               One <strong className="text-stone-700">block</strong> = attention
               (tokens share context) + an MLP (each token thinks), each wrapped in a
               residual and LayerNorm. Stack the blocks and a token&apos;s vector gets
-              refined again and again as it rises.
+              refined again and again as it rises — until, at the very top, the model
+              commits to a guess for the next character.
             </SceneText>
           </>
         )}
         {phase === "logits" && (
           <>
-            <SceneTitle>The final vector becomes one score per character</SceneTitle>
+            <SceneTitle>That guess is a score for every character</SceneTitle>
             <SceneText>
-              At the top of the tower, the last token&apos;s vector is multiplied by
-              one more set of learned weights to produce a{" "}
-              <strong className="text-stone-700">logit</strong> for every possible
-              next character — a raw, unbounded score (it can be negative or
-              positive) saying how much the model favours that character.
+              The tower&apos;s output is turned into one number — a{" "}
+              <strong className="text-stone-700">logit</strong> — for each of the 65
+              possible next characters. A logit is just a raw, unbounded score (it can
+              be negative or positive): higher means the model favours that character
+              more.
             </SceneText>
           </>
         )}
         {phase === "softmax" && (
           <>
-            <SceneTitle>Softmax turns scores into probabilities</SceneTitle>
+            <SceneTitle>Softmax turns those scores into probabilities</SceneTitle>
             <SceneText>
               Logits don&apos;t add up to anything yet.{" "}
               <strong className="text-stone-700">Softmax</strong> fixes that in two
@@ -94,34 +97,79 @@ export default function BlocksSoftmaxScene({ onNext }: SceneProps) {
         )}
       </motion.div>
 
-      {/* ── the persistent morph: the "final vector" strip ──
-          It exists in every phase with a stable key + layout, so it glides from
-          the top of the tower up to the head of the chart. */}
+      {/* chart caption (chart phases only) */}
+      {onChart && (
+        <motion.p key={`cap-${phase}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }} className="mt-4 text-[13px] text-stone-400">
+          {phase === "logits"
+            ? "the model's raw scores — taller = more favoured"
+            : "exaggerate the gaps, then normalise → probabilities"}
+        </motion.p>
+      )}
+
+      {/* ── THE MORPH ──
+          The candidate bars ARE the persistent object. In the stack phase they're
+          a small "prediction" panel on top of the tower; on Continue the SAME bars
+          (stable keys) grow into the full chart, then reshape into probabilities.
+          Nested layout (panel → row → column) is the proven opening-scene pattern;
+          the bars themselves use scaleY only (no layout) to avoid distortion. */}
       <motion.div
         layout
-        transition={{ layout: { duration: 0.7, ease: [0.22, 1, 0.36, 1] } }}
-        className={`mx-auto flex w-fit flex-col items-center ${onChart ? "mt-6" : "mt-7"}`}
+        transition={{ layout: { duration: 0.75, ease: [0.22, 1, 0.36, 1] } }}
+        className={`mx-auto transition-colors duration-500 ${
+          onChart
+            ? "mt-3 max-w-lg border border-transparent bg-transparent px-0 py-0"
+            : "mt-7 w-fit rounded-xl border border-stone-200 bg-white px-3 pb-1.5 pt-2"
+        }`}
       >
-        <div className="flex h-9 items-end gap-[2px] rounded-lg border border-violet-200 bg-violet-50 px-2 py-1.5">
-          {FINAL_VEC.map((h, j) => (
-            <motion.span
-              key={j}
-              initial={{ scaleY: 0 }}
-              animate={{ scaleY: h }}
-              transition={{ delay: j * 0.015, type: "spring", stiffness: 260, damping: 22 }}
-              style={{ transformOrigin: "bottom", height: "100%" }}
-              className="block w-1 rounded-sm bg-violet-400"
-            />
-          ))}
-        </div>
-        <span className="mt-1 text-[11px] text-violet-500">
-          final vector{onChart ? "" : " (128 numbers)"}
-        </span>
+        <motion.div layout className={`flex items-end justify-center ${onChart ? "gap-2 sm:gap-3" : "gap-[3px]"}`}>
+          {data.map((c, i) => {
+            const h = phase === "softmax" ? probs[i] / (maxProb || 1) : logitH(c.logit);
+            return (
+              <motion.div
+                key={c.char}
+                layout
+                transition={{ layout: { duration: 0.75, ease: [0.22, 1, 0.36, 1] } }}
+                className={`flex flex-col items-center ${onChart ? "flex-1" : "w-3"}`}
+              >
+                {/* value above: logit -> percentage (chart phases only) */}
+                {onChart && (
+                  <motion.span
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.25, duration: 0.3 }}
+                    className="mb-1 font-mono text-[11px] text-stone-500"
+                  >
+                    {phase === "logits" ? c.logit.toFixed(1) : `${(probs[i] * 100).toFixed(0)}%`}
+                  </motion.span>
+                )}
+                <div className={`w-full ${onChart ? "h-40 max-w-9" : "h-7 max-w-2.5"}`}>
+                  <motion.div
+                    animate={{ scaleY: Math.max(0.02, h) }}
+                    transition={{ type: "spring", stiffness: 200, damping: 24 }}
+                    style={{ transformOrigin: "bottom", height: "100%" }}
+                    className={`mx-auto w-full rounded-t-md transition-colors duration-500 ${
+                      phase === "softmax" ? "bg-indigo-500" : "bg-stone-300"
+                    }`}
+                  />
+                </div>
+                <motion.span
+                  layout="position"
+                  className={`mt-1.5 font-mono font-semibold text-stone-800 ${onChart ? "text-sm" : "text-[10px]"}`}
+                >
+                  {show(c.char)}
+                </motion.span>
+              </motion.div>
+            );
+          })}
+        </motion.div>
       </motion.div>
 
-      {/* ── STACK phase: the tower below the vector ── */}
+      {/* ── STACK phase: the label + tower beneath the prediction panel ── */}
       {phase === "stack" && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}>
+          <p className="mt-1.5 text-[11px] text-stone-400">
+            next-character prediction — one bar per possible character
+          </p>
           <span className="mt-1 block text-stone-300">↑</span>
           <div className="mx-auto flex w-full max-w-xs flex-col items-stretch gap-1.5">
             {Array.from({ length: layers }, (_, i) => layers - 1 - i).map((n) => (
@@ -170,99 +218,51 @@ export default function BlocksSoftmaxScene({ onNext }: SceneProps) {
         </motion.div>
       )}
 
-      {/* ── LOGITS / SOFTMAX phases: the bars ──
-          These persist across both phases (stable keys), so the SAME bar reshapes
-          from a logit height into a probability height — the central morph. */}
-      {onChart && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}>
-          <p className="mt-3 text-[13px] text-stone-400">
-            {phase === "logits"
-              ? "× output weights →  one score per character"
-              : "÷ exaggerate & normalise →  probabilities"}
+      {/* logits-phase note */}
+      {phase === "logits" && (
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.3 }}
+          className="mx-auto mt-4 max-w-md text-[15px] text-stone-500"
+        >
+          Real scores after{" "}
+          <span className="font-mono text-stone-600">&ldquo;To be, or not to b&rdquo;</span>.
+          It clearly favours <span className="font-mono font-semibold text-stone-700">e</span> —
+          but a tall bar isn&apos;t yet a probability.
+        </motion.p>
+      )}
+
+      {/* softmax-phase: temperature */}
+      {phase === "softmax" && (
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2, duration: 0.4 }}>
+          <label className="mx-auto mt-5 block max-w-md">
+            <span className="mb-1 flex justify-between text-sm text-stone-500">
+              <span>Temperature — how boldly it picks</span>
+              <span className="font-mono font-semibold text-indigo-700">{temp.toFixed(2)}</span>
+            </span>
+            <input
+              type="range"
+              min={0.1}
+              max={2}
+              step={0.05}
+              value={temp}
+              onChange={(e) => setTemp(+e.target.value)}
+              className="w-full accent-indigo-600"
+            />
+          </label>
+          <p className="mx-auto mt-2 max-w-md text-[13px] text-stone-400">
+            Temperature divides every logit <em>before</em> softmax.{" "}
+            <strong className="text-stone-600">Low</strong> (&lt;1) sharpens the
+            gaps — the leader runs away with it (safe, repetitive).{" "}
+            <strong className="text-stone-600">High</strong> (&gt;1) flattens them —
+            the field levels out (varied, riskier).
           </p>
-
-          {cands ? (
-            <div className="mx-auto mt-3 flex h-44 max-w-lg items-end justify-center gap-2 sm:gap-3">
-              {cands.map((c, i) => {
-                const h = phase === "logits" ? logitH(c.logit) : probs[i] / (maxProb || 1);
-                return (
-                  <div key={c.char} className="flex h-full flex-1 flex-col items-center justify-end">
-                    {/* value above: logit -> percentage */}
-                    <span className="mb-1 font-mono text-[11px] text-stone-500">
-                      {phase === "logits"
-                        ? c.logit.toFixed(1)
-                        : `${(probs[i] * 100).toFixed(0)}%`}
-                    </span>
-                    <div className="w-full max-w-9 flex-1">
-                      <motion.div
-                        animate={{ scaleY: Math.max(0.02, h) }}
-                        transition={{ type: "spring", stiffness: 200, damping: 24 }}
-                        style={{ transformOrigin: "bottom", height: "100%" }}
-                        className={`w-full rounded-t-md transition-colors duration-500 ${
-                          phase === "logits" ? "bg-stone-300" : "bg-indigo-500"
-                        }`}
-                      />
-                    </div>
-                    <span className="mt-1.5 font-mono text-sm font-semibold text-stone-800">
-                      {show(c.char)}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <p className="mt-6 text-sm text-stone-400">
-              (Start the backend to see the model&apos;s real scores.)
-            </p>
-          )}
-
-          {/* logits-phase note */}
-          {phase === "logits" && (
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.3 }}
-              className="mx-auto mt-4 max-w-md text-[15px] text-stone-500"
-            >
-              These are the model&apos;s real scores after{" "}
-              <span className="font-mono text-stone-600">&ldquo;To be, or not to b&rdquo;</span>.
-              It clearly favours <span className="font-mono font-semibold text-stone-700">e</span> —
-              but a tall bar isn&apos;t yet a probability.
-            </motion.p>
-          )}
-
-          {/* softmax-phase: temperature */}
-          {phase === "softmax" && (
-            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2, duration: 0.4 }}>
-              <label className="mx-auto mt-5 block max-w-md">
-                <span className="mb-1 flex justify-between text-sm text-stone-500">
-                  <span>Temperature — how boldly it picks</span>
-                  <span className="font-mono font-semibold text-indigo-700">{temp.toFixed(2)}</span>
-                </span>
-                <input
-                  type="range"
-                  min={0.1}
-                  max={2}
-                  step={0.05}
-                  value={temp}
-                  onChange={(e) => setTemp(+e.target.value)}
-                  className="w-full accent-indigo-600"
-                />
-              </label>
-              <p className="mx-auto mt-2 max-w-md text-[13px] text-stone-400">
-                Temperature divides every logit <em>before</em> softmax.{" "}
-                <strong className="text-stone-600">Low</strong> (&lt;1) sharpens the
-                gaps — the leader runs away with it (safe, repetitive).{" "}
-                <strong className="text-stone-600">High</strong> (&gt;1) flattens them —
-                the field levels out (varied, riskier).
-              </p>
-            </motion.div>
-          )}
         </motion.div>
       )}
 
       {phase === "stack" && (
-        <Continue onClick={() => setPhase("logits")} label="Turn the final vector into a guess" delay={0.3} />
+        <Continue onClick={() => setPhase("logits")} label="Score every possible next character" delay={0.3} />
       )}
       {phase === "logits" && (
         <Continue onClick={() => setPhase("softmax")} label="Make them real probabilities" delay={0.2} />
