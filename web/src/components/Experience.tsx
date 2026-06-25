@@ -5,8 +5,7 @@ import { AnimatePresence, motion } from "motion/react";
 import OpeningScene from "./scenes/OpeningScene";
 import PositionQueryScene from "./scenes/PositionQueryScene";
 import BlockScene from "./scenes/BlockScene";
-import TrainingScene from "./scenes/TrainingScene";
-import GenerateScene from "./scenes/GenerateScene";
+import FinaleScene from "./scenes/FinaleScene";
 import type { SceneProps } from "./scenes/types";
 
 // The experience is a linear sequence of fullscreen scenes; most scenes contain
@@ -52,8 +51,14 @@ const SCENES: SceneDef[] = [
       { id: "softmax", label: "Softmax" },
     ],
   },
-  { id: "training", Component: TrainingScene, phases: [{ id: "main", label: "Training" }] },
-  { id: "generate", Component: GenerateScene, phases: [{ id: "main", label: "Generation" }] },
+  {
+    id: "finale",
+    Component: FinaleScene,
+    phases: [
+      { id: "training", label: "Training" },
+      { id: "generate", label: "Generation" },
+    ],
+  },
 ];
 
 // Flatten into the linear slide list the progress bar and navigation use.
@@ -74,8 +79,7 @@ const VARIANTS: Record<string, { initial: V; exit: V }> = {
   opening: { initial: { opacity: 0, scale: 0.94 }, exit: { opacity: 0, scale: 1.05 } },
   "position-query": { initial: { opacity: 0, x: 72 }, exit: { opacity: 0, x: -72 } },
   block: { initial: { opacity: 0, y: 48 }, exit: { opacity: 0, y: -48 } },
-  training: { initial: { opacity: 0, scale: 0.9 }, exit: { opacity: 0, scale: 1.05 } },
-  generate: { initial: { opacity: 0, y: 52 }, exit: { opacity: 0, y: -52 } },
+  finale: { initial: { opacity: 0, scale: 0.92 }, exit: { opacity: 0, scale: 1.05 } },
 };
 const DEFAULT_VARIANT = { initial: { opacity: 0, y: 40 }, exit: { opacity: 0, y: -40 } };
 

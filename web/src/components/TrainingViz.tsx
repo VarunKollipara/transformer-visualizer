@@ -12,7 +12,14 @@ const R = 16;
 const T = 16;
 const B = 30;
 
-export default function TrainingViz() {
+export default function TrainingViz({
+  onSample,
+  hideSample,
+}: {
+  // report the current scrubber sample up so a parent can show/carry it
+  onSample?: (text: string, step: number) => void;
+  hideSample?: boolean;
+} = {}) {
   const [data, setData] = useState<TrainingResponse | null>(null);
   const [error, setError] = useState(false);
   const [idx, setIdx] = useState(0);
@@ -27,6 +34,12 @@ export default function TrainingViz() {
       })
       .catch(() => setError(true));
   }, []);
+
+  // surface the current sample to the parent (for the carry into generation)
+  useEffect(() => {
+    if (!data || !onSample) return;
+    onSample(data.samples[idx]?.text ?? "", data.history[idx]?.step ?? 0);
+  }, [idx, data, onSample]);
 
   useEffect(() => {
     if (!playing || !data) return;
@@ -157,15 +170,18 @@ export default function TrainingViz() {
         <span className="text-indigo-600">val {cur.val.toFixed(3)}</span>
       </div>
 
-      {/* what the model writes at this point in training */}
-      <div className="mt-3">
-        <p className="mb-1 text-xs text-stone-400">
-          what the model generates at step {cur.step.toLocaleString()}:
-        </p>
-        <pre className="max-h-32 overflow-hidden whitespace-pre-wrap rounded-xl border border-stone-200 bg-stone-50 p-3 font-mono text-[13px] leading-relaxed text-stone-700">
-          {curSample?.text ?? ""}
-        </pre>
-      </div>
+      {/* what the model writes at this point in training (hidden when a parent
+          renders the sample itself so it can carry into the generation canvas) */}
+      {!hideSample && (
+        <div className="mt-3">
+          <p className="mb-1 text-xs text-stone-400">
+            what the model generates at step {cur.step.toLocaleString()}:
+          </p>
+          <pre className="max-h-32 overflow-hidden whitespace-pre-wrap rounded-xl border border-stone-200 bg-stone-50 p-3 font-mono text-[13px] leading-relaxed text-stone-700">
+            {curSample?.text ?? ""}
+          </pre>
+        </div>
+      )}
     </div>
   );
 }
