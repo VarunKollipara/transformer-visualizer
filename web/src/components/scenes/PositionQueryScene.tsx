@@ -43,12 +43,12 @@ const HIDDEN = Array.from({ length: 24 }, (_, j) => 0.25 + 0.7 * Math.abs(Math.s
 const OUT = [0.6, 0.4, 0.7, 0.35, 0.65, 0.5, 0.45, 0.6];
 
 function SignedBar({ value, label }: { value: number; label: string }) {
-  const half = 34;
+  const half = 28;
   const h = Math.min(Math.abs(value) / 1.5, 1) * half;
   const neg = value < 0;
   return (
     <div className="flex flex-col items-center gap-1.5">
-      <div className="relative h-[72px] w-10">
+      <div className="relative h-[60px] w-10">
         <div className="absolute left-0 top-1/2 h-px w-full bg-stone-300" />
         <motion.div
           animate={{ height: h }}
@@ -68,7 +68,7 @@ function FitPlot({ bent, title }: { bent: boolean; title: string }) {
   const path = bent ? "M12,20 L50,62 L88,20" : "M8,44 L92,44";
   return (
     <div className="flex flex-col items-center gap-1.5">
-      <svg viewBox="0 0 100 72" className="w-36">
+      <svg viewBox="0 0 100 72" className="w-28">
         <line x1="8" y1="66" x2="92" y2="66" stroke="#e7e5e4" strokeWidth="1" />
         <motion.path
           d={path}
@@ -114,11 +114,24 @@ export default function PositionQueryScene({ phase: phaseProp, onNext }: ScenePr
   }, []);
 
   const words = swapped ? ORDER_B : ORDER_A;
-  const tiles = phase === "order" ? ORDER_TILES : phase === "qkv" ? ["T"] : LINE;
-  const lineMode = phase === "attention" || phase === "think";
-  // the carried line of tiles is on stage for order→think, gone for the
-  // single-token MLP deep-dive (widen/relu)
-  const showTiles = phase !== "widen" && phase !== "relu";
+  // Tiles, keyed so the SAME tile persists across phases and layout-morphs.
+  // In `attention` the whole line is keyed by its line index; in `think` we keep
+  // only T/o/b (their original line indices 0/1/3) so those exact tiles fly out
+  // of the line into the MLP demo; widen/relu keep just T (index 0) as the anchor
+  // we follow into the deep-dive.
+  const THINK_IDX = [0, 1, 3]; // T, o, b in "To be"
+  const tileList: { ch: string; key: number }[] =
+    phase === "order"
+      ? ORDER_TILES.map((ch, i) => ({ ch, key: i }))
+      : phase === "qkv"
+        ? [{ ch: "T", key: 0 }]
+        : phase === "attention"
+          ? LINE.map((ch, i) => ({ ch, key: i }))
+          : phase === "think"
+            ? THINK_IDX.map((i) => ({ ch: LINE[i], key: i }))
+            : [{ ch: "T", key: 0 }]; // widen, relu — the subject token, carried
+  const lineMode = phase !== "order" && phase !== "qkv";
+  const tilesGap = phase === "attention" ? "gap-1" : phase === "think" ? "gap-7" : "gap-2";
 
   const row = useMemo(() => {
     if (!data || query === null) return null;
@@ -217,28 +230,33 @@ export default function PositionQueryScene({ phase: phaseProp, onNext }: ScenePr
         </motion.div>
       )}
 
-      {/* the shared tiles — tile 0 ("T") morphs through order→qkv→attention, and
-          the full line then carries from attention into `think` as context */}
-      {showTiles && (
-        <div className={`mx-auto mt-6 flex max-w-2xl flex-wrap items-start justify-center ${lineMode ? "gap-1" : "gap-2"}`}>
-          <AnimatePresence>
-            {tiles.map((ch, i) => {
-              const isFirst = i === 0;
-              const big = phase === "qkv" && isFirst;
-              const w = phase === "attention" && query !== null && i <= query ? (row ? row[i] / (rowMax || 1) : 0) : 0;
-              const isQuery = phase === "attention" && i === query;
-              return (
-                <motion.div
-                  key={i}
-                  layout
-                  initial={isFirst ? false : { opacity: 0, scale: 0.6 }}
-                  animate={{ opacity: phase === "think" ? 0.55 : 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.5 }}
-                  transition={{ layout: { duration: 0.7, ease: [0.22, 1, 0.36, 1] }, opacity: { duration: 0.4 } }}
-                  onClick={() => phase === "attention" && setQuery(i)}
-                  className={`relative flex flex-col items-center overflow-hidden rounded-lg border font-mono ${
+      {/* the shared tiles — the "T" tile morphs through order→qkv→attention; the
+          line then condenses so T/o/b fly into the MLP demo, and T alone carries
+          into the widen/relu deep-dive. Each tile is a keyed column so it
+          layout-morphs to its new home between phases. */}
+      <div className={`mx-auto mt-6 flex max-w-2xl flex-wrap items-start justify-center ${tilesGap}`}>
+        <AnimatePresence>
+          {tileList.map(({ ch, key }) => {
+            const isFirst = key === 0;
+            const big = phase === "qkv" && isFirst;
+            const w = phase === "attention" && query !== null && key <= query ? (row ? row[key] / (rowMax || 1) : 0) : 0;
+            const isQuery = phase === "attention" && key === query;
+            return (
+              <motion.div
+                key={key}
+                layout
+                initial={isFirst ? false : { opacity: 0, scale: 0.6 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.5 }}
+                transition={{ layout: { duration: 0.7, ease: [0.22, 1, 0.36, 1] }, opacity: { duration: 0.4 } }}
+                className="flex flex-col items-center"
+              >
+                {/* the character tile box — the part that travels through the line */}
+                <div
+                  onClick={() => phase === "attention" && setQuery(key)}
+                  className={`relative flex items-center justify-center overflow-hidden rounded-lg border font-mono ${
                     big ? "border-teal-300 bg-teal-50 px-5 py-3" : "border-sky-200 bg-sky-50"
-                  } ${lineMode ? `h-9 w-7 justify-center ${phase === "attention" ? "cursor-pointer" : ""} ${isQuery ? "ring-2 ring-teal-400" : ""}` : "px-2.5 py-1.5"}`}
+                  } ${lineMode ? `h-9 w-7 ${phase === "attention" ? "cursor-pointer" : ""} ${isQuery ? "ring-2 ring-teal-400" : ""}` : "px-2.5 py-1.5"}`}
                 >
                   {phase === "attention" && (
                     <motion.span className="absolute inset-0 bg-teal-400" initial={false} animate={{ opacity: w }} transition={{ duration: 0.3 }} />
@@ -246,15 +264,34 @@ export default function PositionQueryScene({ phase: phaseProp, onNext }: ScenePr
                   <motion.span layout="position" className={`relative text-stone-800 ${big ? "text-2xl" : lineMode ? "text-sm" : "text-base"}`}>
                     {lineMode ? show(ch) : ch}
                   </motion.span>
-                  {phase === "order" && (
-                    <span className="relative mt-1 rounded bg-amber-100 px-1 text-[10px] text-amber-700">pos {i}</span>
-                  )}
-                </motion.div>
-              );
-            })}
-          </AnimatePresence>
-        </div>
-      )}
+                </div>
+
+                {/* order: position label */}
+                {phase === "order" && (
+                  <span className="mt-1 rounded bg-amber-100 px-1 text-[10px] text-amber-700">pos {key}</span>
+                )}
+
+                {/* think: this token drops into its own MLP */}
+                {phase === "think" && (
+                  <motion.div
+                    className="flex flex-col items-center gap-1.5"
+                    initial={{ opacity: 0, y: -6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.35, duration: 0.4 }}
+                  >
+                    <span className="mt-1 text-stone-300">↓</span>
+                    <div className="rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 font-mono text-xs font-semibold text-violet-700">MLP</div>
+                    <span className="text-stone-300">↓</span>
+                    <div className="flex h-9 w-7 items-center justify-center rounded-lg border border-emerald-200 bg-emerald-50 font-mono text-sm text-stone-800">
+                      {show(ch)}
+                    </div>
+                  </motion.div>
+                )}
+              </motion.div>
+            );
+          })}
+        </AnimatePresence>
+      </div>
 
       {/* query/key/value — qkv only */}
       {phase === "qkv" && (
@@ -288,35 +325,10 @@ export default function PositionQueryScene({ phase: phaseProp, onNext }: ScenePr
         </motion.p>
       )}
 
-      {/* think: the same tokens now each drop into their own MLP */}
+      {/* think: the carried T/o/b tiles (above) have each dropped into an MLP */}
       {phase === "think" && (
         <motion.div key="think" {...enter}>
-          <p className="mx-auto mt-2 max-w-lg text-[13px] text-stone-400">
-            the whole line above — now watch each token go off and think on its own:
-          </p>
-          <div className="mx-auto mt-4 flex max-w-md items-start justify-center gap-7">
-            {["T", "o", "b"].map((ch, k) => (
-              <div key={ch} className="flex flex-col items-center gap-1.5">
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-sky-200 bg-sky-50 font-mono text-stone-800">
-                  {ch}
-                </div>
-                <span className="text-stone-300">↓</span>
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.8, y: -6 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  transition={{ delay: 0.25 + k * 0.12, type: "spring", stiffness: 280, damping: 22 }}
-                  className="rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 font-mono text-xs font-semibold text-violet-700"
-                >
-                  MLP
-                </motion.div>
-                <span className="text-stone-300">↓</span>
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-emerald-200 bg-emerald-50 font-mono text-stone-800">
-                  {ch}
-                </div>
-              </div>
-            ))}
-          </div>
-          <p className="mx-auto mt-5 max-w-lg text-[15px] text-stone-500">
+          <p className="mx-auto mt-6 max-w-lg text-[15px] text-stone-500">
             The <em>same</em> little network runs on every token separately, like
             handing each one its own small calculator. Let&apos;s open one up.
           </p>
@@ -324,10 +336,11 @@ export default function PositionQueryScene({ phase: phaseProp, onNext }: ScenePr
         </motion.div>
       )}
 
-      {/* widen: MLP shape */}
+      {/* widen: MLP shape (the carried T tile sits above this) */}
       {phase === "widen" && (
         <motion.div key="widen" {...enter}>
-          <div className="mt-8 flex items-end justify-center gap-3">
+          <p className="mt-3 text-[13px] text-stone-400">↓ inside its MLP</p>
+          <div className="mt-4 flex items-end justify-center gap-3">
             <div className="flex flex-col items-center gap-1">
               <Bars values={IN} />
               <span className="text-xs text-stone-400">vector (128)</span>
@@ -354,10 +367,11 @@ export default function PositionQueryScene({ phase: phaseProp, onNext }: ScenePr
         </motion.div>
       )}
 
-      {/* relu */}
+      {/* relu (the carried T tile sits above this) */}
       {phase === "relu" && (
         <motion.div key="relu" {...enter}>
-          <div className="mx-auto mt-6 flex max-w-lg items-center justify-center gap-8 rounded-xl border border-stone-200 bg-white p-5">
+          <p className="mt-2 text-[13px] text-stone-400">↓ between the widen and the shrink</p>
+          <div className="mx-auto mt-2 flex max-w-lg items-center justify-center gap-6 rounded-xl border border-stone-200 bg-white p-4">
             <FitPlot bent={false} title="only straight lines" />
             <span className="text-2xl text-stone-300">vs</span>
             <FitPlot bent title="bends allowed" />
@@ -370,8 +384,8 @@ export default function PositionQueryScene({ phase: phaseProp, onNext }: ScenePr
             patterns instead of only straight ones.
           </p>
 
-          <div className="mx-auto mt-6 max-w-md rounded-xl border border-stone-200 bg-white p-5">
-            <p className="mb-4 text-sm text-stone-500">
+          <div className="mx-auto mt-4 max-w-md rounded-xl border border-stone-200 bg-white p-4">
+            <p className="mb-3 text-sm text-stone-500">
               The rule itself, on a single number, couldn&apos;t be simpler:{" "}
               <span className="font-mono">max(0, x)</span> — keep positives, zero out
               negatives. Drag it:
@@ -396,12 +410,12 @@ export default function PositionQueryScene({ phase: phaseProp, onNext }: ScenePr
                 className="w-full accent-emerald-600"
               />
             </label>
-            <p className="mt-4 text-xs text-stone-400">
-              Every one of the 512 numbers in the wide layer gets this same treatment.
+            <p className="mt-3 text-xs text-stone-400">
+              Every one of the 512 wide-layer numbers gets this same treatment.
             </p>
           </div>
 
-          <Continue onClick={onNext} label="What keeps it all stable" delay={0.3} />
+          <Continue onClick={onNext} label="What keeps it all stable" delay={0.2} />
         </motion.div>
       )}
 

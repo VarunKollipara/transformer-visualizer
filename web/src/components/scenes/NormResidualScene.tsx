@@ -6,7 +6,7 @@ import Continue from "./Continue";
 import { SceneText, SceneTitle } from "./ui";
 import type { SceneProps } from "./types";
 
-// Directional enter so each phase change feels deliberate, not a plain crossfade.
+// Directional enter for the phase-specific surrounding content.
 const enter = {
   initial: { opacity: 0, y: 16 },
   animate: { opacity: 1, y: 0 },
@@ -16,21 +16,24 @@ const enter = {
 // x and the layer's small edit, so x' = x + edit is only a nudge away from x.
 const X = [0.55, 0.35, 0.7, 0.45, 0.6, 0.4, 0.5, 0.65];
 const EDIT = [0.08, -0.06, 0.05, 0.1, -0.04, 0.07, -0.05, 0.06];
-
-const RAW = [0.9, 0.2, 1.4, 0.5, 1.1, 0.3, 0.8, 1.6, 0.4, 1.0];
-const NORM = [0.55, 0.35, 0.75, 0.45, 0.65, 0.4, 0.52, 0.82, 0.42, 0.6];
+const XP = X.map((v, j) => v + EDIT[j]); // x' = x + layer(x) — the carried vector
+const MEAN = XP.reduce((a, b) => a + b, 0) / XP.length;
+const STD = Math.sqrt(XP.reduce((a, b) => a + (b - MEAN) ** 2, 0) / XP.length) || 1;
+// display height factor: raw x' vs a tidied, even band once normalised
+const rawH = (v: number) => v;
+const normH = (v: number) => 0.52 + ((v - MEAN) / STD) * 0.09;
 
 type Phase = "residual" | "layernorm";
 
 export default function NormResidualScene({ phase: phaseProp, onNext }: SceneProps) {
   const phase = phaseProp as Phase;
   const [normalized, setNormalized] = useState(false);
-  const bars = normalized ? NORM : RAW;
+  const ln = phase === "layernorm";
 
   return (
     <div className="text-center">
       <motion.div key={`t-${phase}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-        {phase === "residual" ? (
+        {!ln ? (
           <>
             <SceneTitle>Trick 1: add, don&apos;t overwrite</SceneTitle>
             <SceneText>
@@ -43,18 +46,18 @@ export default function NormResidualScene({ phase: phaseProp, onNext }: ScenePro
           <>
             <SceneTitle>Trick 2: keep the numbers tidy</SceneTitle>
             <SceneText>
-              The second: after each step, <strong className="text-stone-700">
-              LayerNorm</strong> (<strong className="text-stone-700">layer
-              normalization</strong>) rescales a token&apos;s numbers back to a steady,
-              even range — so values don&apos;t snowball as they pass through layer
-              after layer.
+              That very vector now passes through{" "}
+              <strong className="text-stone-700">LayerNorm</strong> (
+              <strong className="text-stone-700">layer normalization</strong>), which
+              rescales its numbers back to a steady, even range — so values don&apos;t
+              snowball as they pass through layer after layer.
             </SceneText>
           </>
         )}
       </motion.div>
 
-      {/* ── RESIDUAL phase ── */}
-      {phase === "residual" && (
+      {/* residual-only: the diagram + the inputs (x and the layer's edit) */}
+      {!ln && (
         <motion.div key="residual" {...enter}>
           <div className="mx-auto mt-7 max-w-xl rounded-xl border border-stone-200 bg-white p-5">
             <div className="flex items-center justify-center gap-2 font-mono text-sm">
@@ -74,8 +77,6 @@ export default function NormResidualScene({ phase: phaseProp, onNext }: ScenePro
                 original x carried straight across
               </span>
             </div>
-
-            {/* concrete: x, the small edit, and x' = x + edit */}
             <div className="mt-6 flex items-end justify-center gap-6">
               <div className="flex flex-col items-center gap-1">
                 <div className="flex h-16 items-end gap-[3px]">
@@ -95,68 +96,77 @@ export default function NormResidualScene({ phase: phaseProp, onNext }: ScenePro
                 <span className="text-xs text-stone-400">layer(x) — a small edit</span>
               </div>
               <span className="mb-5 text-stone-300">=</span>
-              <div className="flex flex-col items-center gap-1">
-                <div className="flex h-16 items-end gap-[3px]">
-                  {X.map((v, j) => (
-                    <span key={j} style={{ height: `${(v + EDIT[j]) * 56 + 2}px` }} className="w-2 rounded-sm bg-emerald-400" />
-                  ))}
-                </div>
-                <span className="text-xs text-stone-400">x′ = x + layer(x)</span>
-              </div>
             </div>
           </div>
+        </motion.div>
+      )}
 
+      {/* SHARED carried element: the resulting vector x'. It stays mounted across
+          both phases, so it slides up and recolors (emerald → amber) as we move
+          into LayerNorm, then tidies when normalised. */}
+      <motion.div
+        layout
+        transition={{ layout: { duration: 0.6, ease: [0.22, 1, 0.36, 1] } }}
+        className={`mx-auto max-w-xl ${ln ? "mt-7 rounded-xl border border-stone-200 bg-white p-5" : "mt-3"}`}
+      >
+        {ln && (
+          <p className="mb-3 text-sm text-stone-500">
+            The very vector we just built — some numbers run higher than others. Press
+            normalise:
+          </p>
+        )}
+        <div className="flex h-20 items-end justify-center gap-[4px]">
+          {XP.map((v, j) => (
+            <motion.span
+              key={j}
+              animate={{ height: `${(ln && normalized ? normH(v) : rawH(v)) * 56 + 2}px` }}
+              transition={{ type: "spring", stiffness: 280, damping: 22 }}
+              className={`w-3 rounded-sm transition-colors duration-500 ${ln ? "bg-amber-400" : "bg-emerald-400"}`}
+            />
+          ))}
+        </div>
+        <span className="mt-1 block font-mono text-xs text-stone-400">
+          {ln ? "one token's vector" : "x′ = x + layer(x)"}
+        </span>
+        {ln && (
+          <button
+            onClick={() => setNormalized((n) => !n)}
+            className="mt-4 rounded-full bg-stone-800 px-4 py-1.5 text-sm font-medium text-white hover:bg-stone-700"
+          >
+            {normalized ? "reset" : "normalise"}
+          </button>
+        )}
+      </motion.div>
+
+      {/* residual-only explanation + advance */}
+      {!ln && (
+        <>
           <SceneText delay={0.3} className="mt-5 text-[15px]">
             Because the original is always carried forward, even a layer that learns
             nothing useful can&apos;t wreck the signal — and the learning signal has a
             clear, short path back through every layer. That&apos;s what lets a stack
             go dozens of layers deep without falling apart.
           </SceneText>
-
           <Continue onClick={onNext} label="And the second trick" delay={0.4} />
-        </motion.div>
+        </>
       )}
 
-      {/* ── LAYERNORM phase ── */}
-      {phase === "layernorm" && (
-        <motion.div key="layernorm" {...enter}>
-          <div className="mx-auto mt-7 max-w-xl rounded-xl border border-stone-200 bg-white p-5">
-            <p className="mb-3 text-sm text-stone-500">
-              One token&apos;s vector. Some numbers are big, some small, all over the
-              place. Press normalise:
-            </p>
-            <div className="flex h-20 items-end justify-center gap-[4px]">
-              {bars.map((v, j) => (
-                <motion.span
-                  key={j}
-                  animate={{ height: `${v * 44 + 2}px` }}
-                  transition={{ type: "spring", stiffness: 280, damping: 22 }}
-                  className="w-3 rounded-sm bg-amber-400"
-                />
-              ))}
-            </div>
-            <button
-              onClick={() => setNormalized((n) => !n)}
-              className="mt-4 rounded-full bg-stone-800 px-4 py-1.5 text-sm font-medium text-white hover:bg-stone-700"
-            >
-              {normalized ? "reset" : "normalise"}
-            </button>
-            <p className="mt-4 text-sm text-stone-500">
-              Under the hood it&apos;s two steps: <strong className="text-stone-700">
-              subtract the average</strong> of the vector (recentre it around 0), then{" "}
-              <strong className="text-stone-700">divide by the spread</strong> (so the
-              values have a consistent scale). Same shape, tamed magnitude.
-            </p>
-          </div>
-
-          <SceneText delay={0.3} className="mt-5 text-[15px]">
+      {/* layernorm-only explanation + advance */}
+      {ln && (
+        <>
+          <p className="mx-auto mt-4 max-w-xl text-sm text-stone-500">
+            Under the hood it&apos;s two steps: <strong className="text-stone-700">
+            subtract the average</strong> of the vector (recentre it around 0), then{" "}
+            <strong className="text-stone-700">divide by the spread</strong> (so the
+            values have a consistent scale). Same shape, tamed magnitude.
+          </p>
+          <SceneText delay={0.3} className="mt-4 text-[15px]">
             Residual connections keep the signal flowing; LayerNorm keeps it from
             blowing up. Together they&apos;re the quiet plumbing that makes a deep
             stack trainable at all.
           </SceneText>
-
           <Continue onClick={onNext} label="Stack it into a tower" delay={0.4} />
-        </motion.div>
+        </>
       )}
     </div>
   );
