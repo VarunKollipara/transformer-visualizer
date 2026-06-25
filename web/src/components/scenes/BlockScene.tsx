@@ -35,6 +35,10 @@ const FALLBACK: Candidate[] = [
 
 type Phase = "residual" | "layernorm" | "stack" | "logits" | "softmax";
 
+// One shared timing for every layout (position/size) morph in this scene, so
+// elements move together instead of at different speeds.
+const LAYOUT_T = { duration: 0.6, ease: [0.22, 1, 0.36, 1] as const };
+
 // Both halves of "how a token's vector becomes a prediction": the two tricks
 // that make depth work (residual, LayerNorm), then stacking blocks and reading
 // off the answer (logits, softmax). The SAME token vector is the carried thread:
@@ -144,7 +148,7 @@ export default function BlockScene({ phase: phaseProp, onNext }: SceneProps) {
       {showPanel && (
         <motion.div
           layout
-          transition={{ layout: { duration: 0.75, ease: [0.22, 1, 0.36, 1] } }}
+          transition={{ layout: LAYOUT_T }}
           className={`mx-auto transition-colors duration-500 ${
             onChart
               ? "mt-3 max-w-lg border border-transparent bg-transparent px-0 py-0"
@@ -158,7 +162,7 @@ export default function BlockScene({ phase: phaseProp, onNext }: SceneProps) {
                 <motion.div
                   key={c.char}
                   layout
-                  transition={{ layout: { duration: 0.75, ease: [0.22, 1, 0.36, 1] } }}
+                  transition={{ layout: LAYOUT_T }}
                   className={`flex flex-col items-center ${onChart ? "flex-1" : "w-3"}`}
                 >
                   {onChart && (
@@ -265,47 +269,47 @@ export default function BlockScene({ phase: phaseProp, onNext }: SceneProps) {
         </motion.div>
       )}
 
-      {/* ── carried vector: x' (residual) → normalized (layernorm) → tower base (stack) ── */}
+      {/* ── carried vector: x' (residual) → normalized (layernorm) → tower base (stack) ──
+          Kept the SAME size in every phase (bars use scaleY only, no per-bar
+          layout) so the morph is purely positional — it glides between slides
+          rather than stretching. The LayerNorm caption/button sit outside the
+          morphing element so they don't inflate its box. */}
       {showVec && (
-        <motion.div
-          layout
-          transition={{ layout: { duration: 0.65, ease: [0.22, 1, 0.36, 1] } }}
-          className={`mx-auto transition-colors duration-500 ${
-            ln ? "mt-6 max-w-md rounded-xl border border-stone-200 bg-white p-5" : phase === "stack" ? "mt-0" : "mt-3"
-          }`}
-        >
+        <div className={`mx-auto ${phase === "stack" ? "mt-1" : "mt-5"}`}>
           {ln && (
-            <p className="mb-3 text-sm text-stone-500">
+            <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.35 }} className="mb-3 text-sm text-stone-500">
               The very vector we just built — some numbers run higher than others.
               Press normalise:
-            </p>
+            </motion.p>
           )}
-          <motion.div layout className="flex items-end justify-center gap-[4px]">
-            {XP.map((v, j) => (
-              <motion.div key={j} layout className="flex flex-col items-center">
-                <div className={`w-3 ${phase === "stack" ? "h-9" : "h-16"}`}>
-                  <motion.div
-                    animate={{ scaleY: Math.max(0.06, vecFrac(v)) }}
-                    transition={{ type: "spring", stiffness: 280, damping: 22 }}
-                    style={{ transformOrigin: "bottom", height: "100%" }}
-                    className={`w-full rounded-sm transition-colors duration-500 ${phase === "residual" ? "bg-emerald-400" : "bg-amber-400"}`}
-                  />
-                </div>
-              </motion.div>
-            ))}
+          <motion.div layout transition={{ layout: LAYOUT_T }} className="mx-auto w-fit">
+            <div className="flex h-14 items-end justify-center gap-[4px]">
+              {XP.map((v, j) => (
+                <motion.div
+                  key={j}
+                  animate={{ scaleY: Math.max(0.06, vecFrac(v)) }}
+                  transition={{ type: "spring", stiffness: 280, damping: 22 }}
+                  style={{ transformOrigin: "bottom", height: "100%" }}
+                  className={`w-3 rounded-sm transition-colors duration-500 ${phase === "residual" ? "bg-emerald-400" : "bg-amber-400"}`}
+                />
+              ))}
+            </div>
+            <span className="mt-1 block font-mono text-[11px] text-stone-400">
+              {phase === "residual" ? "x′ = x + layer(x)" : phase === "stack" ? "a token's vector, entering the stack" : "one token's vector"}
+            </span>
           </motion.div>
-          <span className={`mt-1 block font-mono text-stone-400 ${phase === "stack" ? "text-[10px]" : "text-xs"}`}>
-            {phase === "residual" ? "x′ = x + layer(x)" : phase === "stack" ? "a token's vector, entering the stack" : "one token's vector"}
-          </span>
           {ln && (
-            <button
+            <motion.button
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1, duration: 0.35 }}
               onClick={() => setNormalized((n) => !n)}
               className="mt-4 rounded-full bg-stone-800 px-4 py-1.5 text-sm font-medium text-white hover:bg-stone-700"
             >
               {normalized ? "reset" : "normalise"}
-            </button>
+            </motion.button>
           )}
-        </motion.div>
+        </div>
       )}
 
       {/* ── STACK part B: the block-count slider (below the base vector) ── */}

@@ -74,14 +74,15 @@ const SLIDES = SCENES.flatMap((s, sceneIndex) =>
 
 // Each SCENE gets its own entrance/exit motion (only plays when crossing a scene
 // boundary; slide changes within a scene are handled inside the scene).
-type V = Record<string, number>;
-const VARIANTS: Record<string, { initial: V; exit: V }> = {
-  opening: { initial: { opacity: 0, scale: 0.94 }, exit: { opacity: 0, scale: 1.05 } },
-  "position-query": { initial: { opacity: 0, x: 72 }, exit: { opacity: 0, x: -72 } },
-  block: { initial: { opacity: 0, y: 48 }, exit: { opacity: 0, y: -48 } },
-  finale: { initial: { opacity: 0, scale: 0.92 }, exit: { opacity: 0, scale: 1.05 } },
+// One coherent transition for every scene change: a subtle fade + slight
+// rise/recede. Keeping it uniform (instead of a different direction per scene)
+// means the exit and the next entrance move along the same axis, so boundaries
+// read as one smooth "advance" rather than a disjointed slide-then-jump. The
+// within-scene morphs carry the visual interest.
+const SCENE_VARIANT = {
+  initial: { opacity: 0, scale: 0.98, y: 14 },
+  exit: { opacity: 0, scale: 1.02, y: -14 },
 };
-const DEFAULT_VARIANT = { initial: { opacity: 0, y: 40 }, exit: { opacity: 0, y: -40 } };
 
 export default function Experience() {
   const [slide, setSlide] = useState(0);
@@ -92,7 +93,6 @@ export default function Experience() {
 
   const cur = SLIDES[slide];
   const scene = SCENES[cur.sceneIndex];
-  const variant = VARIANTS[scene.id] ?? DEFAULT_VARIANT;
 
   return (
     <div className="relative flex h-[100svh] w-full flex-col overflow-hidden">
@@ -134,10 +134,10 @@ export default function Experience() {
         <AnimatePresence mode="wait">
           <motion.div
             key={scene.id}
-            initial={variant.initial}
-            animate={{ opacity: 1, x: 0, y: 0, scale: 1 }}
-            exit={variant.exit}
-            transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+            initial={SCENE_VARIANT.initial}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={SCENE_VARIANT.exit}
+            transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
             className="absolute inset-0 flex items-center justify-center overflow-y-auto px-6 py-8"
           >
             <div className="w-full max-w-3xl">
