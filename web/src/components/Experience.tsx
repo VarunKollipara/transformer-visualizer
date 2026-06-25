@@ -4,8 +4,7 @@ import { useCallback, useState, type ComponentType } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import OpeningScene from "./scenes/OpeningScene";
 import PositionQueryScene from "./scenes/PositionQueryScene";
-import NormResidualScene from "./scenes/NormResidualScene";
-import BlocksSoftmaxScene from "./scenes/BlocksSoftmaxScene";
+import BlockScene from "./scenes/BlockScene";
 import TrainingScene from "./scenes/TrainingScene";
 import GenerateScene from "./scenes/GenerateScene";
 import type { SceneProps } from "./scenes/types";
@@ -43,17 +42,11 @@ const SCENES: SceneDef[] = [
     ],
   },
   {
-    id: "norm-residual",
-    Component: NormResidualScene,
+    id: "block",
+    Component: BlockScene,
     phases: [
       { id: "residual", label: "Residual connections" },
       { id: "layernorm", label: "LayerNorm" },
-    ],
-  },
-  {
-    id: "blocks-softmax",
-    Component: BlocksSoftmaxScene,
-    phases: [
       { id: "stack", label: "Stacking blocks" },
       { id: "logits", label: "Logits" },
       { id: "softmax", label: "Softmax" },
@@ -80,8 +73,7 @@ type V = Record<string, number>;
 const VARIANTS: Record<string, { initial: V; exit: V }> = {
   opening: { initial: { opacity: 0, scale: 0.94 }, exit: { opacity: 0, scale: 1.05 } },
   "position-query": { initial: { opacity: 0, x: 72 }, exit: { opacity: 0, x: -72 } },
-  "norm-residual": { initial: { opacity: 0, y: 48 }, exit: { opacity: 0, y: -48 } },
-  "blocks-softmax": { initial: { opacity: 0, y: 64 }, exit: { opacity: 0, y: -32 } },
+  block: { initial: { opacity: 0, y: 48 }, exit: { opacity: 0, y: -48 } },
   training: { initial: { opacity: 0, scale: 0.9 }, exit: { opacity: 0, scale: 1.05 } },
   generate: { initial: { opacity: 0, y: 52 }, exit: { opacity: 0, y: -52 } },
 };
