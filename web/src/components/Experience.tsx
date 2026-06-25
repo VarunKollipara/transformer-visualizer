@@ -6,8 +6,7 @@ import OpeningScene from "./scenes/OpeningScene";
 import PositionQueryScene from "./scenes/PositionQueryScene";
 import MLPScene from "./scenes/MLPScene";
 import NormResidualScene from "./scenes/NormResidualScene";
-import BlocksScene from "./scenes/BlocksScene";
-import SoftmaxScene from "./scenes/SoftmaxScene";
+import BlocksSoftmaxScene from "./scenes/BlocksSoftmaxScene";
 import TrainingScene from "./scenes/TrainingScene";
 import GenerateScene from "./scenes/GenerateScene";
 import type { SceneProps } from "./scenes/types";
@@ -19,8 +18,7 @@ const SCENES: { id: string; Component: ComponentType<SceneProps> }[] = [
   { id: "position-query", Component: PositionQueryScene },
   { id: "mlp", Component: MLPScene },
   { id: "norm-residual", Component: NormResidualScene },
-  { id: "blocks", Component: BlocksScene },
-  { id: "softmax", Component: SoftmaxScene },
+  { id: "blocks-softmax", Component: BlocksSoftmaxScene },
   { id: "training", Component: TrainingScene },
   { id: "generate", Component: GenerateScene },
 ];
@@ -36,8 +34,7 @@ const VARIANTS: Record<string, { initial: V; exit: V }> = {
   attention: { initial: { opacity: 0, scale: 1.08 }, exit: { opacity: 0, scale: 0.94 } },
   mlp: { initial: { opacity: 0, x: -72 }, exit: { opacity: 0, x: 72 } },
   "norm-residual": { initial: { opacity: 0, y: 48 }, exit: { opacity: 0, y: -48 } },
-  blocks: { initial: { opacity: 0, y: 64 }, exit: { opacity: 0, y: -32 } },
-  softmax: { initial: { opacity: 0, x: 72 }, exit: { opacity: 0, x: -72 } },
+  "blocks-softmax": { initial: { opacity: 0, y: 64 }, exit: { opacity: 0, y: -32 } },
   training: { initial: { opacity: 0, scale: 0.9 }, exit: { opacity: 0, scale: 1.05 } },
   generate: { initial: { opacity: 0, y: 52 }, exit: { opacity: 0, y: -52 } },
 };
