@@ -100,8 +100,8 @@ export default function BlockScene({ phase: phaseProp, onNext }: SceneProps) {
           <>
             <SceneTitle>Stack it into a tower</SceneTitle>
             <SceneText>
-              One <strong className="text-stone-700">block</strong> = attention + an
-              MLP, each wrapped in the residual and LayerNorm you just saw. Stack the
+              One <strong className="text-stone-700">block</strong>{" "}
+              = attention + an MLP, each wrapped in the residual and LayerNorm you just saw. Stack the
               blocks and that token&apos;s vector — the one entering at the bottom —
               gets refined again and again as it rises, until the model commits to a
               guess for the next character.
@@ -373,7 +373,7 @@ export default function BlockScene({ phase: phaseProp, onNext }: SceneProps) {
           <p className="mx-auto mt-2 max-w-md text-[13px] text-stone-400">
             Temperature divides every logit <em>before</em> softmax.{" "}
             <strong className="text-stone-600">Low</strong> (&lt;1) sharpens the gaps;{" "}
-            <strong className="text-stone-600">High</strong> (&gt;1) levels the field.
+            <strong className="text-stone-600">High</strong>{" "}(&gt;1) levels the field.
           </p>
         </motion.div>
       )}

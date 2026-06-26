@@ -175,7 +175,8 @@ export default function PositionQueryScene({ phase: phaseProp, onNext }: ScenePr
           <>
             <SceneTitle>Then each token thinks for itself</SceneTitle>
             <SceneText>
-              Attention let every token <em>gather</em> hints from the line above.
+              Attention let every token <em>gather</em>{" "}
+              hints from the line above.
               But gathering isn&apos;t understanding. So next, each of those same
               tokens takes what it collected and <strong className="text-stone-700">
               works on it alone</strong> — this step, no token looks at any other.
@@ -189,7 +190,8 @@ export default function PositionQueryScene({ phase: phaseProp, onNext }: ScenePr
               That little per-token network is the <strong className="text-stone-700">
               MLP</strong> (<strong className="text-stone-700">multi-layer
               perceptron</strong>). Inside, it temporarily{" "}
-              <strong className="text-stone-700">widens</strong> the token&apos;s 128
+              <strong className="text-stone-700">widens</strong>{" "}
+              the token&apos;s 128
               numbers to 512, then <strong className="text-stone-700">shrinks</strong>{" "}
               them back to 128.
             </SceneText>
@@ -224,8 +226,8 @@ export default function PositionQueryScene({ phase: phaseProp, onNext }: ScenePr
             ⇄ swap dog and man
           </button>
           <p className="mx-auto mt-4 max-w-lg text-[15px] text-stone-500">
-            So we add a <strong className="text-stone-700">position</strong> to each
-            token&apos;s vector. Take the first token:
+            So we add a <strong className="text-stone-700">position</strong>{" "}
+            to each token&apos;s vector. Take the first token:
           </p>
         </motion.div>
       )}
@@ -312,8 +314,8 @@ export default function PositionQueryScene({ phase: phaseProp, onNext }: ScenePr
             ))}
           </div>
           <SceneText delay={0.6} className="mt-4 text-[15px]">
-            It compares its <strong className="text-teal-700">query</strong> to every
-            other token&apos;s <strong className="text-sky-700">key</strong>, softmaxes
+            It compares its <strong className="text-teal-700">query</strong>{" "}
+            to every other token&apos;s <strong className="text-sky-700">key</strong>, softmaxes
             those into percentages, then blends everyone&apos;s{" "}
             <strong className="text-violet-700">values</strong>.
           </SceneText>
@@ -332,7 +334,8 @@ export default function PositionQueryScene({ phase: phaseProp, onNext }: ScenePr
       {phase === "think" && (
         <motion.div key="think" {...enter}>
           <p className="mx-auto mt-6 max-w-lg text-[15px] text-stone-500">
-            The <em>same</em> little network runs on every token separately, like
+            The <em>same</em>{" "}
+            little network runs on every token separately, like
             handing each one its own small calculator. Let&apos;s open one up.
           </p>
           <Continue onClick={onNext} label="Look inside the MLP" delay={0.3} />
