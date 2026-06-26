@@ -234,8 +234,11 @@ export default function PositionQueryScene({ phase: phaseProp, onNext }: ScenePr
           line then condenses so T/o/b fly into the MLP demo, and T alone carries
           into the widen/relu deep-dive. Each tile is a keyed column so it
           layout-morphs to its new home between phases. */}
-      <div className={`mx-auto mt-6 flex max-w-2xl flex-wrap items-start justify-center ${tilesGap}`}>
-        <AnimatePresence>
+      {/* mode="popLayout" pulls exiting tiles out of the layout flow at once, so
+          the surviving tiles glide straight to their final centered spot in one
+          smooth move instead of drifting then snapping when the others clear. */}
+      <div className={`relative mx-auto mt-6 flex max-w-2xl flex-wrap items-start justify-center ${tilesGap}`}>
+        <AnimatePresence mode="popLayout">
           {tileList.map(({ ch, key }) => {
             const isFirst = key === 0;
             const big = phase === "qkv" && isFirst;
