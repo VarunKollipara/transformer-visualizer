@@ -78,12 +78,12 @@ export default function FinaleScene({ phase: phaseProp, onNext, restart }: Scene
           <>
             <SceneTitle>How did it learn all this?</SceneTitle>
             <SceneText>
-              Everything so far started as random numbers. Training repeats four
-              steps thousands of times: <strong className="text-stone-700">predict</strong>,
-              measure how wrong it was (the <strong className="text-stone-700">loss</strong>),
+              Everything started as random numbers. Training repeats four steps
+              thousands of times — <strong className="text-stone-700">predict</strong>,
+              measure the error (the <strong className="text-stone-700">loss</strong>),
               compute how to fix every parameter (<strong className="text-stone-700">
-              backprop</strong>), and nudge them all a hair. Drag the scrubber to
-              watch random noise turn into Shakespeare:
+              backprop</strong>), nudge them all a hair. Drag the scrubber to watch
+              noise become Shakespeare:
             </SceneText>
           </>
         ) : (
@@ -105,7 +105,7 @@ export default function FinaleScene({ phase: phaseProp, onNext, restart }: Scene
           initial={{ opacity: 0, y: 18 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.25, duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-          className="mx-auto mt-6 max-w-2xl text-left"
+          className="mx-auto mt-5 max-w-2xl text-left"
         >
           <TrainingViz onSample={onSample} hideSample />
         </motion.div>
@@ -153,8 +153,8 @@ export default function FinaleScene({ phase: phaseProp, onNext, restart }: Scene
 
       {/* ── the carried element: the model's text canvas ──
           scrubber sample in `training`, live generation in `generate`. */}
-      <motion.div layout transition={{ layout: { duration: 0.6, ease: [0.22, 1, 0.36, 1] } }} className="mx-auto mt-5 max-w-2xl">
-        <div className="min-h-36 whitespace-pre-wrap rounded-xl border border-stone-200 bg-stone-50 p-4 text-left font-mono text-sm leading-relaxed text-stone-800">
+      <motion.div layout transition={{ layout: { duration: 0.6, ease: [0.22, 1, 0.36, 1] } }} className="mx-auto mt-4 max-w-2xl">
+        <div className="min-h-28 whitespace-pre-wrap rounded-xl border border-stone-200 bg-stone-50 p-4 text-left font-mono text-[13px] leading-relaxed text-stone-800">
           {phase === "training" ? (
             trainSample || <span className="text-stone-400">loading the training run…</span>
           ) : steps ? (
@@ -192,10 +192,9 @@ export default function FinaleScene({ phase: phaseProp, onNext, restart }: Scene
       {/* training-only: overfitting note + advance */}
       {phase === "training" && (
         <>
-          <SceneText delay={0.2} className="mt-5 text-[15px]">
-            We also watch the loss on text the model never trains on. Here both fall
-            together, so it&apos;s genuinely learning the patterns — not just
-            memorising (that would be overfitting).
+          <SceneText delay={0.2} className="mt-4 text-[15px]">
+            Both the training and the held-out (never-seen) loss fall together — so
+            it&apos;s genuinely learning the patterns, not just memorising.
           </SceneText>
           <Continue onClick={onNext} label="Now you make it write" delay={0.3} />
         </>

@@ -6,7 +6,7 @@ import { getTraining, type TrainingResponse } from "@/lib/api";
 const LN65 = Math.log(65); // ~4.174, the "knows nothing" baseline
 
 const W = 640;
-const H = 300;
+const H = 165;
 const L = 44;
 const R = 16;
 const T = 16;
@@ -83,8 +83,8 @@ export default function TrainingViz({
   const curSample = samples[idx];
 
   return (
-    <div className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
-      <div className="mb-3 flex flex-wrap items-center gap-x-5 gap-y-1 text-sm">
+    <div className="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
+      <div className="mb-2 flex flex-wrap items-center gap-x-5 gap-y-1 text-sm">
         <span className="flex items-center gap-1.5 text-stone-600">
           <span className="inline-block h-2.5 w-4 rounded bg-rose-500" /> train
           loss
@@ -139,7 +139,7 @@ export default function TrainingViz({
       </svg>
 
       {/* scrubber controls */}
-      <div className="mt-3 flex items-center gap-3">
+      <div className="mt-2 flex items-center gap-3">
         <button
           onClick={() => {
             if (idx >= history.length - 1) setIdx(0);
