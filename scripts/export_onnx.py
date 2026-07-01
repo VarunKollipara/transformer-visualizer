@@ -68,7 +68,17 @@ def main() -> None:
         do_constant_folding=True,
         verbose=False,
     )
-    print(f"  wrote {OUT_PATH}  ({OUT_PATH.stat().st_size:,} bytes)")
+
+    # The exporter may split weights into a sidecar .onnx.data file; inline them
+    # into a single self-contained .onnx so the browser fetches just one file.
+    import onnx
+
+    m = onnx.load(OUT_PATH.as_posix())  # loads any external data
+    onnx.save_model(m, OUT_PATH.as_posix(), save_as_external_data=False)
+    sidecar = OUT_PATH.with_suffix(".onnx.data")
+    if sidecar.exists():
+        sidecar.unlink()
+    print(f"  wrote {OUT_PATH}  ({OUT_PATH.stat().st_size:,} bytes, single file)")
 
     # ── correctness check: ONNX vs PyTorch on a real prompt ──
     try:

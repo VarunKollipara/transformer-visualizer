@@ -34,23 +34,11 @@ export type GenerateResponse = {
   steps: Step[];
 };
 
-export const API_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
-
-async function postJSON<T>(path: string, body: unknown): Promise<T> {
-  const res = await fetch(`${API_URL}${path}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) throw new Error(`POST ${path} -> ${res.status}`);
-  return res.json() as Promise<T>;
-}
-
 // info / embeddings / training are identical every run, so they're baked to
 // static JSON at build time (scripts/export_static.py -> web/public/data/*.json)
-// and fetched as plain files — no backend needed for these. The live endpoints
-// (forward / logits / generate) run client-side via ONNX; see below.
+// and fetched as plain files. The live endpoints (forward / logits / generate)
+// run the exported model client-side via ONNX (./onnx.ts), lazy-loaded on first
+// use so onnxruntime-web isn't in the initial bundle. Net: no backend at all.
 async function getStatic<T>(file: string): Promise<T> {
   const res = await fetch(`/data/${file}`);
   if (!res.ok) throw new Error(`GET /data/${file} -> ${res.status}`);
@@ -60,20 +48,14 @@ async function getStatic<T>(file: string): Promise<T> {
 export const getInfo = () => getStatic<InfoResponse>("info.json");
 
 export const forward = (text: string, top_k = 10) =>
-  postJSON<ForwardResponse>("/api/forward", { text, top_k });
+  import("./onnx").then((m) => m.forward(text, top_k));
 
 export const generate = (
   prompt: string,
   max_new_tokens = 200,
   temperature = 1.0,
   top_k = 10,
-) =>
-  postJSON<GenerateResponse>("/api/generate", {
-    prompt,
-    max_new_tokens,
-    temperature,
-    top_k,
-  });
+) => import("./onnx").then((m) => m.generate(prompt, max_new_tokens, temperature, top_k));
 
 export type EmbeddingPoint = {
   id: number;
@@ -108,4 +90,4 @@ export type Candidate = { char: string; logit: number };
 export type LogitsResponse = { context: string; candidates: Candidate[] };
 
 export const getLogits = (text: string, top_k = 8) =>
-  postJSON<LogitsResponse>("/api/logits", { text, top_k });
+  import("./onnx").then((m) => m.next_logits(text, top_k));
