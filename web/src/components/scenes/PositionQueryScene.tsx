@@ -24,7 +24,7 @@ const enter = {
 // ── MLP helper visuals ──
 function Bars({ values, color = "bg-indigo-400", from = 0 }: { values: number[]; color?: string; from?: number }) {
   return (
-    <div className="flex h-12 items-end gap-[2px]">
+    <div className="flex h-12 items-end gap-px sm:gap-[2px]">
       {values.map((v, j) => (
         <motion.span
           key={j}
@@ -32,7 +32,7 @@ function Bars({ values, color = "bg-indigo-400", from = 0 }: { values: number[];
           animate={{ scaleY: Math.max(0.02, v) }}
           transition={{ delay: from + j * 0.02, type: "spring", stiffness: 280, damping: 20 }}
           style={{ transformOrigin: "bottom", height: "100%" }}
-          className={`block w-1.5 rounded-sm ${color}`}
+          className={`block w-1 rounded-sm sm:w-1.5 ${color}`}
         />
       ))}
     </div>
@@ -347,7 +347,7 @@ export default function PositionQueryScene({ phase: phaseProp, onNext }: ScenePr
       {phase === "widen" && (
         <motion.div key="widen" {...enter}>
           <p className="mt-3 text-[13px] text-stone-400">↓ inside its MLP</p>
-          <div className="mt-4 flex items-end justify-center gap-3">
+          <div className="mt-4 flex items-end justify-center gap-1.5 sm:gap-3">
             <div className="flex flex-col items-center gap-1">
               <Bars values={IN} />
               <span className="text-xs text-stone-400">vector (128)</span>

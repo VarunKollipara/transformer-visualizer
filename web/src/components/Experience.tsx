@@ -97,11 +97,11 @@ export default function Experience() {
   return (
     <div className="relative flex h-[100svh] w-full flex-col overflow-hidden">
       {/* top bar: title + per-slide progress (click any dot to jump) */}
-      <header className="z-10 flex items-center justify-between px-6 py-4">
-        <span className="text-sm font-semibold tracking-tight text-stone-500">
+      <header className="z-10 flex items-center justify-center px-6 py-4 sm:justify-between">
+        <span className="hidden text-sm font-semibold tracking-tight text-stone-500 sm:block">
           How an AI actually works
         </span>
-        <div className="flex items-center">
+        <div className="flex flex-wrap items-center justify-center">
           {SLIDES.map((s, i) => (
             <button
               key={i}
