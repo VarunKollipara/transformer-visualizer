@@ -95,8 +95,8 @@ User is very particular about **motion feel** (rejected a "signature chip"; want
 ## 5. What's next (agreed order with Varun)
 
 1. ✅ **Teaching / accuracy review** — done. Reviewed all copy against `src/model.py`; added 4 precision tweaks (attention scaling, pre-norm ordering note, ReLU "it all collapses", char-vs-subword tokenization note). NOTES.md was already accurate.
-2. **Mobile / responsive pass** — NEXT. Desktop-first today; tune every slide for narrow screens (the tile line, the tower, the loss curve, control rows) and for **short viewports** (ReLU + a couple of slides overflow below ~800px). Verify at 375px and at short heights.
-3. **Deploy (last step):** move inference in-browser (transformers.js / ONNX) to drop the FastAPI dependency, then deploy to Vercel.
+2. ✅ **Mobile / responsive pass** — done (scope: keep desktop no-scroll; **allow vertical scroll on phones**; kill horizontal overflow). Audited all 17 slides at 375px; only two spots overflowed and are fixed: the header title (hidden below `sm`, dots centered) and the MLP widen/shrink bar row (narrower bars + tighter gaps below `sm`). Everything else already reflowed (attention line wraps, grids/controls stack, SVGs scale). Tall slides simply scroll on mobile — that's intended. **Note for later:** on *short desktop* windows (<~800px height) the ReLU slide still scrolls; the no-scroll target is ~892px. If a stricter short-height fit is ever wanted, that's a separate tuning pass.
+3. **Deploy (last step) — NEXT:** move inference in-browser (transformers.js / ONNX) to drop the FastAPI dependency, then deploy to Vercel.
 
 **Update HANDOFF.md + NOTES.md after each step** (Varun's standing request).
 
