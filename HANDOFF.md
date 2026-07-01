@@ -44,17 +44,26 @@ Every scene boundary and every within-scene phase change is now an **element-car
 
 ## 2. How to run / verify
 
-```bash
-# Python env is uv-managed. From repo root:
-uv run python -m scripts.train          # (re)train -> checkpoints/gpt.pt + history.json (~10 min, CPU). Needed once.
-uv run uvicorn src.api:app --port 8000  # backend (loads checkpoint lazily)
+**The frontend is now fully standalone — no backend needed at runtime.** The
+three "static" endpoints are baked to `web/public/data/*.json`; the three "live"
+ones (forward/logits/generate) run the exported model **in the browser** via
+onnxruntime-web. `src/api.py` (FastAPI) still exists but is only used to
+*regenerate* those baked assets, not at runtime.
 
-# Frontend, from web/:
-npm run dev          # dev server on :3000
-npm run build        # typecheck + lint + prod build (DO THIS to catch errors)
+```bash
+# Frontend, from web/ — this is all you need to run the app:
+npm run dev          # dev server on :3000 (predev copies the onnx wasm to public/ort)
+npm run build        # typecheck + lint + prod build (prebuild copies the wasm)
+
+# Python (uv, from repo root) — only to (re)train or (re)bake assets:
+uv run python -m scripts.train           # (re)train -> checkpoints/gpt.pt + history.json (~10 min CPU)
+uv run python -m scripts.export_static   # -> web/public/data/{info,embeddings,training}.json
+uv run python -m scripts.export_onnx     # -> web/public/model/gpt.onnx (verifies vs PyTorch)
+# (re-run the two export_* scripts after any retrain so the site matches the model)
 ```
 - Shell is **PowerShell** (primary) on Windows; a Bash tool also exists. `uv` is the Python entrypoint.
-- The page expects the backend at `127.0.0.1:8000`; scenes degrade gracefully if it's down, but the **data slides need it** (embeddings map, real attention weights, real logits, training curve, live generation). Start it for any real QA.
+- **Client-side inference:** `web/src/lib/onnx.ts` loads `/model/gpt.onnx` (3.2MB, single file) + vocab and reproduces the old API response shapes. Uses the CPU-wasm build (`onnxruntime-web/wasm`, single-threaded), wasm self-hosted from `/public/ort` (copied from node_modules at pre-dev/build, gitignored). Experience prewarms the model on the first Continue. First inference downloads ~17MB (wasm+model), then cached.
+- **QA:** just `npm run dev` and drive the dots; no server to start. All 17 slides render with real data offline.
 
 ### ⚠️ Verification gotchas (read — these cost hours)
 1. **Restart the preview server fresh before judging anything "broken."** Repeated hot-reloads through broken states corrupt the dev server (frozen advancement, code that's correct looks broken). `preview_start` may **reuse** a stale server — call `preview_stop` then `preview_start` to force a clean one.
@@ -96,7 +105,7 @@ User is very particular about **motion feel** (rejected a "signature chip"; want
 
 1. ✅ **Teaching / accuracy review** — done. Reviewed all copy against `src/model.py`; added 4 precision tweaks (attention scaling, pre-norm ordering note, ReLU "it all collapses", char-vs-subword tokenization note). NOTES.md was already accurate.
 2. ✅ **Mobile / responsive pass** — done (scope: keep desktop no-scroll; **allow vertical scroll on phones**; kill horizontal overflow). Audited all 17 slides at 375px; only two spots overflowed and are fixed: the header title (hidden below `sm`, dots centered) and the MLP widen/shrink bar row (narrower bars + tighter gaps below `sm`). Everything else already reflowed (attention line wraps, grids/controls stack, SVGs scale). Tall slides simply scroll on mobile — that's intended. **Note for later:** on *short desktop* windows (<~800px height) the ReLU slide still scrolls; the no-scroll target is ~892px. If a stricter short-height fit is ever wanted, that's a separate tuning pass.
-3. **Deploy (last step) — NEXT:** move inference in-browser (transformers.js / ONNX) to drop the FastAPI dependency, then deploy to Vercel.
+3. **Deploy (last step) — IN PROGRESS.** Backend dependency is **gone** (hybrid: static JSON + client-side ONNX, all verified working offline). Remaining is the actual **Vercel publish**, which is Varun's to do (needs his Vercel/GitHub; outward-facing). Steps: import the GitHub repo in Vercel → set **Root Directory = `web`** → framework auto-detects Next.js → Build `npm run build` (the prebuild copies the wasm) → deploy. It's a static site (no env vars, no server). `next.config` is default; `web/public/{model,data}` are committed, `web/public/ort` is regenerated at build.
 
 **Update HANDOFF.md + NOTES.md after each step** (Varun's standing request).
 
