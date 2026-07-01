@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState, type ComponentType } from "react";
+import { useCallback, useRef, useState, type ComponentType } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import OpeningScene from "./scenes/OpeningScene";
 import PositionQueryScene from "./scenes/PositionQueryScene";
@@ -87,7 +87,20 @@ const SCENE_VARIANT = {
 export default function Experience() {
   const [slide, setSlide] = useState(0);
 
-  const next = useCallback(() => setSlide((i) => Math.min(i + 1, SLIDES.length - 1)), []);
+  // Once a visitor engages (first advance), start downloading + warming the
+  // in-browser model in the background so it's ready by the attention slide.
+  // Skipped for anyone who bounces on the first screen.
+  const warmed = useRef(false);
+  const prewarm = useCallback(() => {
+    if (warmed.current) return;
+    warmed.current = true;
+    import("@/lib/onnx").then((m) => m.forward("\n").catch(() => {})).catch(() => {});
+  }, []);
+
+  const next = useCallback(() => {
+    prewarm();
+    setSlide((i) => Math.min(i + 1, SLIDES.length - 1));
+  }, [prewarm]);
   const back = useCallback(() => setSlide((i) => Math.max(i - 1, 0)), []);
   const restart = useCallback(() => setSlide(0), []);
 
