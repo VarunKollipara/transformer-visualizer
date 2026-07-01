@@ -204,7 +204,7 @@ export default function PositionQueryScene({ phase: phaseProp, onNext }: ScenePr
               Widening and shrinking are both <strong className="text-stone-700">
               linear</strong> — only multiplying and adding. And a linear step
               followed by another linear step is still just <em>one</em> linear step.
-              Stack a hundred and the whole tower collapses into a single straight
+              Stack a hundred of them and it all collapses into a single straight
               line: it could only ever draw straight relationships.
             </SceneText>
           </>
@@ -315,8 +315,9 @@ export default function PositionQueryScene({ phase: phaseProp, onNext }: ScenePr
           </div>
           <SceneText delay={0.6} className="mt-4 text-[15px]">
             It compares its <strong className="text-teal-700">query</strong>{" "}
-            to every other token&apos;s <strong className="text-sky-700">key</strong>, softmaxes
-            those into percentages, then blends everyone&apos;s{" "}
+            to every other token&apos;s <strong className="text-sky-700">key</strong>{" "}
+            (scaled so the scores don&apos;t blow up), softmaxes those into
+            percentages, then blends everyone&apos;s{" "}
             <strong className="text-violet-700">values</strong>.
           </SceneText>
         </motion.div>

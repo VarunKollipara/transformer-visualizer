@@ -205,7 +205,9 @@ export default function OpeningScene({ phase: phaseProp, onNext }: SceneProps) {
             Each letter slid into place above its number. A model can&apos;t read
             letters — only numbers — so every character is swapped for its spot in a
             fixed list of 65. This is{" "}
-            <strong className="text-stone-700">tokenization</strong>.
+            <strong className="text-stone-700">tokenization</strong> — here one token
+            is a single character; big models like ChatGPT group common chunks of
+            letters instead.
           </p>
           <Continue onClick={onNext} label="Now give them meaning" delay={0.4} />
         </motion.div>

@@ -341,7 +341,9 @@ export default function BlockScene({ phase: phaseProp, onNext }: SceneProps) {
           Under the hood it&apos;s two steps: <strong className="text-stone-700">
           subtract the average</strong> (recentre around 0), then{" "}
           <strong className="text-stone-700">divide by the spread</strong> (a
-          consistent scale). Same shape, tamed magnitude.
+          consistent scale). Same shape, tamed magnitude. Modern GPTs actually do
+          this <em>just before</em> each attention and MLP step — that ordering
+          (&ldquo;pre-norm&rdquo;) is what keeps a deep stack stable.
         </p>
       )}
 
