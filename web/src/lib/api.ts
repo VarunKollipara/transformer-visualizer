@@ -37,12 +37,6 @@ export type GenerateResponse = {
 export const API_URL =
   process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
 
-async function getJSON<T>(path: string): Promise<T> {
-  const res = await fetch(`${API_URL}${path}`);
-  if (!res.ok) throw new Error(`GET ${path} -> ${res.status}`);
-  return res.json() as Promise<T>;
-}
-
 async function postJSON<T>(path: string, body: unknown): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, {
     method: "POST",
@@ -53,7 +47,17 @@ async function postJSON<T>(path: string, body: unknown): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-export const getInfo = () => getJSON<InfoResponse>("/api/info");
+// info / embeddings / training are identical every run, so they're baked to
+// static JSON at build time (scripts/export_static.py -> web/public/data/*.json)
+// and fetched as plain files — no backend needed for these. The live endpoints
+// (forward / logits / generate) run client-side via ONNX; see below.
+async function getStatic<T>(file: string): Promise<T> {
+  const res = await fetch(`/data/${file}`);
+  if (!res.ok) throw new Error(`GET /data/${file} -> ${res.status}`);
+  return res.json() as Promise<T>;
+}
+
+export const getInfo = () => getStatic<InfoResponse>("info.json");
 
 export const forward = (text: string, top_k = 10) =>
   postJSON<ForwardResponse>("/api/forward", { text, top_k });
@@ -81,7 +85,7 @@ export type EmbeddingPoint = {
 export type EmbeddingsResponse = { points: EmbeddingPoint[] };
 
 export const getEmbeddings = () =>
-  getJSON<EmbeddingsResponse>("/api/embeddings");
+  getStatic<EmbeddingsResponse>("embeddings.json");
 
 export type LossPoint = { step: number; train: number; val: number };
 export type SamplePoint = { step: number; text: string };
@@ -98,7 +102,7 @@ export type TrainingResponse = {
   };
 };
 
-export const getTraining = () => getJSON<TrainingResponse>("/api/training");
+export const getTraining = () => getStatic<TrainingResponse>("training.json");
 
 export type Candidate = { char: string; logit: number };
 export type LogitsResponse = { context: string; candidates: Candidate[] };
