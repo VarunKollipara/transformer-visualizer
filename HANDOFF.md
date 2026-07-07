@@ -4,7 +4,12 @@ A from-scratch character-level GPT + an **interactive "movie"** that explains ho
 AI (ChatGPT-style) works end to end. This doc is for continuing the project in a
 fresh chat. Read it fully before touching code.
 
-- **Repo:** `C:\Users\logot\Downloads\AIlearn` · git branch `main` (commit regularly; pushed to a private GitHub repo).
+- **Status: SHIPPED.** The full explainer (17 slides) is built, polished,
+  reviewed for accuracy, made responsive, and **deployed to Vercel as a static,
+  backend-free site** (client-side ONNX inference). The originally planned
+  roadmap (phases 0–7) is complete. See §5 for what each step delivered and the
+  short list of optional future polish.
+- **Repo:** `C:\Users\logot\Downloads\AIlearn` · git branch `main` (commit regularly; pushed to `github.com/VarunKollipara/transformer-visualizer`, branch `main`).
 - **User:** Varun — strong software engineer (React/Next/FastAPI/Python), **ML beginner**. Teach ML concepts; don't condescend on engineering.
 - **Dates drift in-session; convert relative dates to absolute when writing memory.**
 
@@ -26,9 +31,10 @@ fresh chat. Read it fully before touching code.
 - `web/src/components/Experience.tsx` — **the controller.** Owns the current **slide** index. A `SCENES` manifest lists each scene + its ordered `phases` ({id,label}); these flatten into one **17-slide list** (`SLIDES`). Renders the current scene `Component` with a `phase` prop; `onNext`/`onBack` step the flat slide list. `AnimatePresence mode="wait"` is **keyed by scene id**, so the scene entrance/exit fires only at a *scene* boundary — within-scene slide (phase) changes keep the component mounted, which is what lets the morphs run.
 - `web/src/components/scenes/*` — the scenes (see §1 order). `ui.tsx` (SceneTitle/SceneText), `Continue.tsx`, `types.ts` (`SceneProps = {phase, onNext, onBack, restart}` — `phase` is controlled by Experience).
 - `web/src/components/TrainingViz.tsx` — loss-curve + scrubber; takes `onSample(text,step)` + `hideSample` props so the Finale can lift the sample text out and carry it.
-- `web/src/lib/api.ts` — typed client. `web/src/lib/example.ts` — `EXAMPLE_LINE = "To be, or not to be, that is the question"` (carried through the whole movie).
-- `web/.env.local` — `NEXT_PUBLIC_API_URL=http://127.0.0.1:8000`.
-- **Live component set is self-contained** (dead scroll-era cluster was deleted): `Experience`, `TrainingViz`, `scenes/{OpeningScene, PositionQueryScene, BlockScene, FinaleScene, Continue, ui, types}`, `lib/{api, example}`. Nothing else.
+- `web/src/lib/api.ts` — typed client: the 3 static endpoints fetch `/data/*.json`; the 3 live ones lazy-import `web/src/lib/onnx.ts` (client-side inference). `web/src/lib/example.ts` — `EXAMPLE_LINE = "To be, or not to be, that is the question"` (carried through the whole movie).
+- `web/next.config.ts` — `output: "export"` (static export → `web/out`). `web/scripts/copy-ort.mjs` — copies the onnx wasm to `public/ort` on pre-dev/build. `web/.env.local` (`NEXT_PUBLIC_API_URL`) is **obsolete** — nothing reads it anymore.
+- **Baked/deploy assets:** `web/public/data/{info,embeddings,training}.json` (committed), `web/public/model/gpt.onnx` (3.2MB, committed), `web/public/ort/*` (wasm, gitignored — regenerated at build).
+- **Live component set is self-contained** (dead scroll-era cluster was deleted): `Experience`, `TrainingViz`, `scenes/{OpeningScene, PositionQueryScene, BlockScene, FinaleScene, Continue, ui, types}`, `lib/{api, example, onnx}`. Nothing else.
 
 ### Current structure — 4 scenes, 17 slides (in `Experience.tsx` SCENES)
 1. **opening** (`OpeningScene`) — 4 slides: **invite → tokens → vectors → dims**. One continuous central morph: the row of characters morphs line → numbered tiles → tiles+mini-vectors → vectors collapse to 1/2/128 via a toggle.
@@ -53,7 +59,7 @@ onnxruntime-web. `src/api.py` (FastAPI) still exists but is only used to
 ```bash
 # Frontend, from web/ — this is all you need to run the app:
 npm run dev          # dev server on :3000 (predev copies the onnx wasm to public/ort)
-npm run build        # typecheck + lint + prod build (prebuild copies the wasm)
+npm run build        # typecheck + lint + STATIC EXPORT -> web/out (prebuild copies the wasm)
 
 # Python (uv, from repo root) — only to (re)train or (re)bake assets:
 uv run python -m scripts.train           # (re)train -> checkpoints/gpt.pt + history.json (~10 min CPU)
@@ -101,26 +107,42 @@ User is very particular about **motion feel** (rejected a "signature chip"; want
 
 ---
 
-## 5. What's next (agreed order with Varun)
+## 5. What was done (the full arc) + optional future work
 
-1. ✅ **Teaching / accuracy review** — done. Reviewed all copy against `src/model.py`; added 4 precision tweaks (attention scaling, pre-norm ordering note, ReLU "it all collapses", char-vs-subword tokenization note). NOTES.md was already accurate.
-2. ✅ **Mobile / responsive pass** — done (scope: keep desktop no-scroll; **allow vertical scroll on phones**; kill horizontal overflow). Audited all 17 slides at 375px; only two spots overflowed and are fixed: the header title (hidden below `sm`, dots centered) and the MLP widen/shrink bar row (narrower bars + tighter gaps below `sm`). Everything else already reflowed (attention line wraps, grids/controls stack, SVGs scale). Tall slides simply scroll on mobile — that's intended. **Note for later:** on *short desktop* windows (<~800px height) the ReLU slide still scrolls; the no-scroll target is ~892px. If a stricter short-height fit is ever wanted, that's a separate tuning pass.
-3. **Deploy (last step) — IN PROGRESS.** Backend dependency is **gone** (hybrid: static JSON + client-side ONNX, all verified working offline). Remaining is the actual **Vercel publish**, which is Varun's to do (needs his Vercel/GitHub; outward-facing). Steps: import the GitHub repo in Vercel → set **Root Directory = `web`** → framework auto-detects Next.js → Build `npm run build` (the prebuild copies the wasm) → deploy. It's a static site (no env vars, no server). `next.config` is default; `web/public/{model,data}` are committed, `web/public/ort` is regenerated at build.
+The roadmap is **complete**. What each of the final three steps delivered:
 
-**Update HANDOFF.md + NOTES.md after each step** (Varun's standing request).
+1. ✅ **Teaching / accuracy review** — reviewed all copy against `src/model.py`; content was already accurate, added 4 precision tweaks (attention scaling, pre-norm ordering note, ReLU "it all collapses", char-vs-subword tokenization note). NOTES.md was already accurate.
+2. ✅ **Mobile / responsive pass** — scope: keep desktop no-scroll; **allow vertical scroll on phones**; kill horizontal overflow. Audited all 17 slides at 375px; fixed the only two horizontal-overflow spots (header title hidden below `sm` + dots centered; MLP widen bar row narrower/tighter below `sm`). Attention line wraps, grids/controls stack, SVGs scale. Tall slides just scroll on mobile (intended).
+3. ✅ **Deploy** — the site is **backend-free and live on Vercel**:
+   - **Part A:** `scripts/export_static.py` bakes info/embeddings/training → `web/public/data/*.json`; `api.ts` fetches those statically.
+   - **Part B:** `scripts/export_onnx.py` exports the char-GPT → single-file `web/public/model/gpt.onnx` (3.2MB), verified vs PyTorch (Δ≈1e-6). `web/src/lib/onnx.ts` runs it in-browser (onnxruntime-web, CPU wasm) reproducing the exact API shapes; `api.ts` routes forward/logits/generate there.
+   - **Part C:** `next.config.ts` `output:"export"` → static `web/out`. All 3 live endpoints verified working **with no backend** (attention weights, logits, streaming generation).
+   - **Vercel setup that worked:** import the GitHub repo → **Root Directory = `web`**. If the Next.js framework preset auto-detects, defaults are fine; the static export also serves fine as a plain folder (Build `npm run build`, Output `out`). No env vars, no server. `web/public/{data,model}` committed; `web/public/ort` (wasm) copied at build. To redeploy the model after a **retrain**, re-run `export_static` + `export_onnx`, commit the new `data/*.json` + `gpt.onnx`, push.
+
+Also done along the way: merged 8 scenes → 4 (element-carry morphs at every boundary), per-slide clickable progress bar, unified scene transitions, popLayout tile-morph fix, removed the dead scroll-era component cluster, fixed the SWC whitespace mashes.
+
+### Optional future polish (nothing blocking)
+- **`prefers-reduced-motion`** — not yet respected everywhere; a pass to honor it would be good for accessibility.
+- **Short-viewport fit** — the ReLU slide scrolls below ~800px window height (no-scroll target is ~892px); tighten if desired.
+- **First-load UX** — first inference pulls ~17MB (wasm+model); a small "warming up the model…" indicator on the attention/generate slides would smooth the wait beyond the existing background prewarm.
+- **Delete the FastAPI backend?** `src/api.py` is now unused at runtime (kept only as a reference / alt way to regenerate assets). Could remove if you want a pure static repo.
 
 ---
 
 ## 6. Recent commits (for orientation)
-Run `git log --oneline -30` for the full arc. Highlights of the recent frontend push:
+Run `git log --oneline -30` for the full arc. Highlights (newest first):
+- `20e4786` deploy: static export (`output: export`) for a host-agnostic build.
+- `5cee686` deploy: prewarm the in-browser model on first advance.
+- `8f6f5dc` deploy part B/C: client-side ONNX inference, backend fully removed.
+- `60d280f` deploy part B1: export char-GPT to ONNX (verified vs PyTorch).
+- `dc73be1` deploy part A: bake info/embeddings/training to static JSON.
+- `9faf38f` responsive: fix horizontal overflow at mobile widths.
 - `de82783` accuracy review: 4 precision tweaks to the teaching copy.
 - `73a299a` fix missing spaces after inline bold/italic (SWC whitespace).
 - `74cdd00` polish pass: fit the training slide + remove dead code.
 - `580333a` fix attention→think tile morph: `popLayout` so survivors don't snap.
-- `3ecf8b4` polish transitions: de-jank carried vector + coherent scene changes.
 - `1d6c1c8` merge training + generate into one Finale scene (text carry).
 - `1136930` merge norm/residual + blocks into one Block scene (vector carry).
-- `3f6c53e` rework attention→think + plain transitions into element carries.
 - `832b6c4` per-slide progress bar (lift phase state to Experience).
 
 Everything is committed; tree should be clean.
