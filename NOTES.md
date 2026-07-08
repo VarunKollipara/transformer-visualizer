@@ -249,3 +249,46 @@ from each next-token guess being conditioned on everything before it.
 ("Autoregressive" = it regresses on / depends on its own previous outputs.)
 
 ---
+
+## Phase 8 — Inference optimization (serving, measuring, speeding up)
+
+### Inference serving framework (vLLM)
+Once a model is trained, "running it" for real users is its own engineering
+discipline. A naive generate loop handles one request at a time and re-computes
+work it could reuse. A **serving framework** like vLLM is a specialized server
+wrapped around the model that (a) batches many users' requests together on the
+fly ("continuous batching" — new requests hop into the batch mid-flight instead
+of waiting for the current one to finish), (b) manages the model's short-term
+memory (the KV cache) in small pages, like an operating system manages RAM, so
+memory isn't wasted on padding, and (c) uses hand-tuned GPU code for the hot
+operations. The surprising part: vLLM doesn't run *your* code at all. It has its
+own fast implementation of each known architecture and only takes your
+**weights** — the learned numbers — plus a config file naming which architecture
+they belong to.
+
+### Weight porting (and why our model can pretend to be GPT-2)
+An architecture is a *shape* — which layers, in what order, with what sizes. Our
+from-scratch model has exactly GPT-2's shape: learned position embeddings,
+pre-LayerNorm blocks, causal multi-head attention, a 4x-wide MLP. So we can copy
+our learned numbers into a GPT-2-format checkpoint and any tool that speaks
+GPT-2 (like vLLM) can run our model, never knowing it wasn't trained as one.
+The move is called **weight porting**, and the devil is entirely in layout
+details: Hugging Face's GPT-2 stores each weight matrix *transposed* relative
+to PyTorch's `nn.Linear` (a historical accident of it using `Conv1D`), and our
+four separate attention heads must be stacked into GPT-2's single fused
+query/key/value matrix in exactly the right row order. Get one of these wrong
+and the model still *runs* — it just outputs garbage. Which is why porting is
+never done without a **parity test**: feed both models identical inputs and
+demand near-identical outputs (ours agree within 0.0000086, pure float32
+rounding noise) and identical greedy generations (ours match for 100/100
+tokens).
+
+### Parameter folding (absorbing one weight into another)
+Our prediction head had a bias vector that GPT-2's format has no slot for.
+Deleting it would change every output. Instead we *folded* it away: because the
+bias is applied right after the final LayerNorm, adding a carefully-solved
+correction to LayerNorm's shift parameter produces *exactly* the same outputs
+with the bias gone (a small linear-algebra solve, exact because the layer is
+wider than the vocabulary). Folding — rewriting a model into an equivalent form
+with different bookkeeping — is a workhorse trick in inference optimization;
+quantization tooling does variations of it constantly.
