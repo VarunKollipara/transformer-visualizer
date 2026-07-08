@@ -1,0 +1,15 @@
+{
+  "label": "prefix-off",
+  "shared": {
+    "ttft_ms_p50": 8.006829999999354,
+    "ttft_ms_mean": 8.89906093750037,
+    "cache_queries": 0.0,
+    "cache_hits": 0.0
+  },
+  "unique": {
+    "ttft_ms_p50": 7.790431999978864,
+    "ttft_ms_mean": 7.956863499999134,
+    "cache_queries": 0.0,
+    "cache_hits": 0.0
+  }
+}

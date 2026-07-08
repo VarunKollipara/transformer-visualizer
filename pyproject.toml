@@ -17,6 +17,8 @@ dev = [
     "onnxruntime>=1.27.0",
     "onnxscript>=0.7.1",
     "pytest>=8",
+    "tokenizers>=0.22.2",
+    "transformers>=5.13.0",
 ]
 
 [tool.uv]
