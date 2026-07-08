@@ -71,7 +71,7 @@ class Head(nn.Module):
     weighted blend of the values of itself and the tokens before it.
     """
 
-    def __init__(self, n_embd: int, head_size: int, block_size: int) -> None:
+    def __init__(self, n_embd: int, head_size: int, block_size: int, dropout: float = 0.0) -> None:
         super().__init__()
         # Three learned linear projections: each maps a length-C token vector to a
         # length-head_size vector. bias=False keeps them pure matrix multiplies.
@@ -83,6 +83,11 @@ class Head(nn.Module):
         # "token i is allowed to attend to token j" (j <= i). Stored as a buffer
         # (fixed, not a learned parameter) so it moves with the model to GPU etc.
         self.register_buffer("tril", torch.tril(torch.ones(block_size, block_size)))
+
+        # Dropout on the attention weights (training only): randomly zero some of
+        # the "who to look at" percentages so the model can't over-rely on one
+        # single source token. A no-op when dropout=0.0 or in eval mode.
+        self.drop = nn.Dropout(dropout)
 
         self.att: torch.Tensor | None = None  # last attention weights, for inspection
 
@@ -109,10 +114,53 @@ class Head(nn.Module):
         # STEP 4: turn each row of scores into percentages that add up to 1.
         wei = F.softmax(wei, dim=-1)  # (B, T, T)
         self.att = wei  # save the attention weights so we can inspect/visualize them
+        wei = self.drop(wei)  # (training only) randomly zero some attention links
 
         # STEP 5: blend each token's view of the values using those percentages.
         out = wei @ v  # (B, T, head_size)
         return out
+
+    def forward_step(
+        self, x: torch.Tensor, kv: tuple[torch.Tensor, torch.Tensor] | None
+    ) -> tuple[torch.Tensor, tuple[torch.Tensor, torch.Tensor]]:
+        """Incremental attention with a KV cache (inference only).
+
+        The key fact that makes caching possible: with causal attention, a
+        token's k and v never change once computed — they depend only on
+        earlier tokens, which are frozen history. Only the QUERY of the newest
+        token is ever needed again. So we compute q/k/v just for the new chunk
+        `x` (S tokens; S=1 while decoding), and attend against cache + chunk.
+
+        x  : (B, S, C)  ONLY the new token(s), not the whole sequence
+        kv : (k_cache, v_cache), each (B, T_past, head_size), or None at start
+        returns: out (B, S, head_size), and the grown (k, v) to cache
+        """
+        B, S, C = x.shape
+        k_new = self.key(x)    # (B, S, hs)  the new tokens' keys
+        q = self.query(x)      # (B, S, hs)  queries: only ever needed once
+        v_new = self.value(x)  # (B, S, hs)
+
+        if kv is not None:
+            k = torch.cat([kv[0], k_new], dim=1)  # (B, T_past+S, hs)
+            v = torch.cat([kv[1], v_new], dim=1)  # (B, T_past+S, hs)
+        else:
+            k, v = k_new, v_new                   # prefill: cache starts empty
+
+        T_total = k.shape[1]
+        T_past = T_total - S
+        wei = q @ k.transpose(-2, -1) * (k.shape[-1] ** -0.5)  # (B, S, T_total)
+
+        # Causal mask with an offset: new token i (0-based within the chunk)
+        # may attend to everything cached plus chunk positions 0..i. diagonal=
+        # T_past shifts the triangle right past the cached region. When S=1
+        # this allows the full row — a lone new token has no future to hide.
+        mask = torch.tril(torch.ones(S, T_total, device=x.device), diagonal=T_past)
+        wei = wei.masked_fill(mask == 0, float("-inf"))
+        wei = F.softmax(wei, dim=-1)  # (B, S, T_total)
+        # no dropout / no self.att here: this path is inference-only
+
+        out = wei @ v  # (B, S, head_size)
+        return out, (k, v)
 
 
 class MultiHeadAttention(nn.Module):
@@ -125,21 +173,36 @@ class MultiHeadAttention(nn.Module):
     outputs back to width n_embd, then apply a linear projection to mix them.
     """
 
-    def __init__(self, n_embd: int, num_heads: int, block_size: int) -> None:
+    def __init__(self, n_embd: int, num_heads: int, block_size: int, dropout: float = 0.0) -> None:
         super().__init__()
         assert n_embd % num_heads == 0, "n_embd must be divisible by num_heads"
         head_size = n_embd // num_heads
         # nn.ModuleList registers each head so its parameters are tracked/trained.
         self.heads = nn.ModuleList(
-            [Head(n_embd, head_size, block_size) for _ in range(num_heads)]
+            [Head(n_embd, head_size, block_size, dropout) for _ in range(num_heads)]
         )
         self.proj = nn.Linear(n_embd, n_embd)  # lets the heads' outputs mix
+        self.drop = nn.Dropout(dropout)        # dropout on what gets added to the residual
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         # Run every head on the same input x, concatenate along the channel dim.
         out = torch.cat([head(x) for head in self.heads], dim=-1)  # (B, T, n_embd)
-        out = self.proj(out)                                       # (B, T, n_embd)
+        out = self.drop(self.proj(out))                            # (B, T, n_embd)
         return out
+
+    def forward_step(
+        self, x: torch.Tensor, kvs: list | None
+    ) -> tuple[torch.Tensor, list]:
+        """Incremental version: one KV pair per head. kvs=None starts fresh."""
+        if kvs is None:
+            kvs = [None] * len(self.heads)
+        outs, new_kvs = [], []
+        for head, kv in zip(self.heads, kvs):
+            out, new_kv = head.forward_step(x, kv)
+            outs.append(out)
+            new_kvs.append(new_kv)
+        out = self.proj(torch.cat(outs, dim=-1))  # (B, S, n_embd); no dropout: inference
+        return out, new_kvs
 
 
 class FeedForward(nn.Module):
@@ -149,15 +212,18 @@ class FeedForward(nn.Module):
     here — the same little network is applied to every position on its own.
     """
 
-    def __init__(self, n_embd: int) -> None:
+    def __init__(self, n_embd: int, dropout: float = 0.0) -> None:
         super().__init__()
         # nn.Sequential just chains the layers in order. Widen 4x, bend with a
         # ReLU nonlinearity (max(0, x)), then project back to n_embd.
+        # NOTE: keep Linear layers at indices 0 and 2 — scripts/export_hf.py
+        # maps them to HF GPT-2 by position.
         self.net = nn.Sequential(
             nn.Linear(n_embd, 4 * n_embd),  # expand to a wider hidden layer
             nn.ReLU(),                       # nonlinearity (without it, the two
                                              # Linears would collapse into one)
             nn.Linear(4 * n_embd, n_embd),  # project back to n_embd
+            nn.Dropout(dropout),             # dropout on what joins the residual
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -198,10 +264,10 @@ class Block(nn.Module):
         more stable than normalizing after).
     """
 
-    def __init__(self, n_embd: int, num_heads: int, block_size: int) -> None:
+    def __init__(self, n_embd: int, num_heads: int, block_size: int, dropout: float = 0.0) -> None:
         super().__init__()
-        self.attn = MultiHeadAttention(n_embd, num_heads, block_size)
-        self.ffn = FeedForward(n_embd)
+        self.attn = MultiHeadAttention(n_embd, num_heads, block_size, dropout)
+        self.ffn = FeedForward(n_embd, dropout)
         self.ln1 = LayerNorm(n_embd)
         self.ln2 = LayerNorm(n_embd)
 
@@ -209,6 +275,14 @@ class Block(nn.Module):
         x = x + self.attn(self.ln1(x))  # communicate, then add back (residual)
         x = x + self.ffn(self.ln2(x))   # compute, then add back (residual)
         return x
+
+    def forward_step(self, x: torch.Tensor, kvs: list | None) -> tuple[torch.Tensor, list]:
+        """Incremental version. LayerNorm and the MLP are per-token (no mixing
+        across positions), so they need no cache — only attention does."""
+        att, new_kvs = self.attn.forward_step(self.ln1(x), kvs)
+        x = x + att
+        x = x + self.ffn(self.ln2(x))
+        return x, new_kvs
 
 
 class MiniGPT(nn.Module):
@@ -277,14 +351,16 @@ class GPT(nn.Module):
         num_heads: int,
         num_layers: int,
         block_size: int,
+        dropout: float = 0.0,  # 0.0 = old behavior; existing checkpoints unaffected
     ) -> None:
         super().__init__()
         self.block_size = block_size
         self.token_emb = TokenEmbedding(vocab_size, n_embd)
         self.pos_emb = PositionalEmbedding(block_size, n_embd)
+        self.drop = nn.Dropout(dropout)             # dropout on the embedding sum
         # nn.Sequential chains the blocks; each preserves (B, T, n_embd).
         self.blocks = nn.Sequential(
-            *[Block(n_embd, num_heads, block_size) for _ in range(num_layers)]
+            *[Block(n_embd, num_heads, block_size, dropout) for _ in range(num_layers)]
         )
         self.ln_f = LayerNorm(n_embd)               # final norm before prediction
         self.lm_head = nn.Linear(n_embd, vocab_size)
@@ -293,7 +369,7 @@ class GPT(nn.Module):
         self, idx: torch.Tensor, targets: torch.Tensor | None = None
     ) -> tuple[torch.Tensor, torch.Tensor | None]:
         B, T = idx.shape
-        h = self.token_emb(idx) + self.pos_emb(T)  # (B, T, C)
+        h = self.drop(self.token_emb(idx) + self.pos_emb(T))  # (B, T, C)
         h = self.blocks(h)                         # (B, T, C)  the deep stack
         h = self.ln_f(h)                           # (B, T, C)
         logits = self.lm_head(h)                   # (B, T, vocab_size)
@@ -305,7 +381,12 @@ class GPT(nn.Module):
 
     @torch.no_grad()
     def generate(self, idx: torch.Tensor, max_new_tokens: int) -> torch.Tensor:
-        """Autoregressive generation (identical loop to MiniGPT.generate)."""
+        """Autoregressive generation (identical loop to MiniGPT.generate).
+
+        NOTE: recomputes the ENTIRE prefix every step — every token's k/v at
+        every layer, again and again — then keeps one row of logits. That
+        redundancy is what the KV cache below removes.
+        """
         for _ in range(max_new_tokens):
             idx_cond = idx[:, -self.block_size :]
             logits, _ = self(idx_cond)
@@ -313,6 +394,49 @@ class GPT(nn.Module):
             probs = F.softmax(logits, dim=-1)
             next_id = torch.multinomial(probs, num_samples=1)
             idx = torch.cat([idx, next_id], dim=1)
+        return idx
+
+    @torch.no_grad()
+    def forward_step(
+        self, idx: torch.Tensor, caches: list | None, pos_start: int
+    ) -> tuple[torch.Tensor, list]:
+        """One incremental forward: only the NEW tokens go through the model.
+
+        idx       : (B, S) the new token IDs (S = prompt length at prefill, 1 after)
+        caches    : one KV list per Block (None to start)
+        pos_start : absolute position of idx[:, 0] — learned absolute positional
+                    embeddings mean each token must get its true position row
+                    (and it's why this cache can't outlive block_size, same
+                    constraint we saw in vLLM).
+        """
+        B, S = idx.shape
+        assert pos_start + S <= self.block_size, "KV cache is only valid up to block_size"
+        if caches is None:
+            caches = [None] * len(self.blocks)
+        h = self.token_emb(idx) + self.pos_emb.table[pos_start : pos_start + S]  # (B, S, C)
+        new_caches = []
+        for block, kvs in zip(self.blocks, caches):
+            h, new_kvs = block.forward_step(h, kvs)
+            new_caches.append(new_kvs)
+        logits = self.lm_head(self.ln_f(h))  # (B, S, V)
+        return logits, new_caches
+
+    @torch.no_grad()
+    def generate_cached(self, idx: torch.Tensor, max_new_tokens: int) -> torch.Tensor:
+        """generate(), but O(T) per token instead of O(T^2): prefill the prompt
+        once, then feed ONLY each new token, attending against the cache."""
+        B, T0 = idx.shape
+        assert T0 + max_new_tokens <= self.block_size, (
+            "absolute positions bake position into cached k/v — the cache can't "
+            "slide, so prompt + new tokens must fit in block_size"
+        )
+        logits, caches = self.forward_step(idx, None, pos_start=0)  # prefill
+        for t in range(max_new_tokens):
+            probs = F.softmax(logits[:, -1, :], dim=-1)             # (B, V)
+            next_id = torch.multinomial(probs, num_samples=1)       # (B, 1)
+            idx = torch.cat([idx, next_id], dim=1)
+            # decode step: ONE token in, one distribution out
+            logits, caches = self.forward_step(next_id, caches, pos_start=T0 + t)
         return idx
 
 
