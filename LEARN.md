@@ -267,3 +267,53 @@ tokens through a 25M model takes well under a millisecond of an ~8 ms TTFT
 that is mostly HTTP/scheduling overhead. The mechanism is real and verified;
 the regime (again) has nothing for it to save. On a 7B model with a 2K-token
 system prompt, this same mechanism is a 5–10× TTFT win.
+
+---
+
+## Step 5 — Fused LayerNorm in Triton
+
+### Q18. In the Triton kernel, what is a "program," why must BLOCK_N be a power of 2 with a mask, and why do we compute statistics in fp32 even for fp16 inputs?
+
+**Answer:** A *program* is one instance of the kernel function; we launch a
+grid of them (one per token row) and each sees only its `tl.program_id`.
+Inside a program you operate on whole blocks — `tl.load` a slice, `tl.sum`
+it — and Triton maps that to threads/warps/coalesced memory for you; that's
+the block-level abstraction that makes 30 lines competitive with CUDA.
+Block shapes must be powers of 2 because Triton tiles them onto hardware
+lanes; our row width 512 happens to be one already, but the general pattern
+is pad-to-pow2 and `mask = cols < N` so the padding lanes load 0 and store
+nothing. Statistics go through fp32 because variance is a sum of squares of
+small differences — in fp16 (10 mantissa bits) catastrophic cancellation
+corrupts it. Our fp16 output differs from the fp32 reference by ~2e-3, which
+is exactly one fp16 rounding step at those magnitudes — storage precision,
+not kernel error (the fp32 path agrees to 1.4e-06).
+
+### Q19. Our kernel beat the eager LayerNorm 3–4× but LOST to torch's F.layer_norm at small M (0.6×). Why isn't that a failure, and what's the lesson about baselines?
+
+**Answer:** The 3–4× over eager is real and expected: eager is ~6 kernels
+with ~6 memory round-trips; ours is 1. But PyTorch *also ships* a fused
+LayerNorm (F.layer_norm) — years of tuning, C++ launch path. At M=1 both
+kernels finish in microseconds and the difference is pure launch machinery:
+our Python wrapper + Triton dispatch costs ~15 µs more per call. At M=8192,
+where actual work dominates, we're at 0.9× — near parity. Lesson: the honest
+baseline for a custom kernel is the *best existing fused implementation*, not
+the naive path. Custom kernels earn their keep when no fused version exists
+for your exact op combination (e.g. FlashAttention before it was everywhere,
+or our GPTQ dequant+GEMM) — not when re-deriving a standard op. Writing one
+correct kernel teaches the skill; knowing when NOT to write one is the
+judgment.
+
+### Q20. LayerNorm got 3× faster but the model only decoded 1.05× faster. Do the arithmetic that explains this, and say what the real fix would be.
+
+**Answer:** Amdahl's law with our own numbers: eager LN ≈ 113 µs × 17 calls
+≈ 1.9 ms of a ~20 ms decode step (~10%). Fusing cuts it to ~0.7 ms, saving
+~1.2 ms — predicted step time 19.9 → ~18.8 ms; measured 19.0. A 3× speedup
+on a 10% slice is a 1.05× whole. The other 19 ms is the remaining ~250 tiny
+kernel launches per step: the Python loop over 8 heads × 8 layers, each with
+separate q/k/v projections, cats, softmaxes. No single fused op fixes a
+death-by-a-thousand-launches architecture — the real remedy is structural:
+fuse q/k/v into one matmul, batch all heads into one tensor op, keep Python
+out of the decode loop. That's precisely what vLLM's GPT-2 implementation
+does, and we measured what it's worth: 1.4 ms/tok vs our 19 ms — 14×. The
+optimization ladder goes: algorithm (KV cache) → structure (batched/fused
+ops) → kernels (Triton) — in that order of leverage.

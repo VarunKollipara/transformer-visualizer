@@ -347,6 +347,73 @@ mechanism we verified is the one that delivers that.
 
 Data: `benchmarks/kv-cache.json`, `benchmarks/prefix-cache-*.json`.
 
+---
+
+## Step 5 (stretch) — Fused LayerNorm in Triton (done 2026-07-07)
+
+Target chosen from our own data: the scratch model's decode is launch-bound
+(~20 ms/tok), and our hand-written LayerNorm runs as ~6 separate kernels × 17
+calls per step ≈ 100 launches/token for normalization alone. A fused kernel
+(one read → stats in registers → one write) attacks exactly that.
+
+Kernel: [src/kernels.py](src/kernels.py) (~30 lines of Triton: one program per
+token row, masked pow2 block, fp32 statistics regardless of storage dtype).
+Wired into [src/model.py](src/model.py) as an opt-in class switch
+(`LayerNorm.use_fused`) — lazy import, CUDA + eval only, so training/autograd
+and the Windows-side visualizer are untouched.
+Benchmark: [scripts/bench_triton_ln.py](scripts/bench_triton_ln.py).
+
+### Results
+
+**Correctness:** fp32 max abs diff 1.4e-06 vs eager (exact); fp16 1.95e-03 —
+that's fp16 *storage* rounding on the output (one ulp at these magnitudes),
+not kernel error: statistics are fp32 inside. End-to-end greedy tokens
+identical with the kernel on.
+
+**Kernel microbench (N=512, fp32, median µs):**
+
+| M rows | eager hand-LN | torch F.layer_norm | Triton | vs eager | vs torch |
+|---|---|---|---|---|---|
+| 1    | 120.9 | 24.6 | 39.9 | 3.0× | 0.6× |
+| 256  | 114.5 | 28.7 | 38.9 | 2.9× | 0.7× |
+| 8192 | 429.1 | 95.2 | 105.5 | 4.1× | 0.9× |
+
+**End-to-end (250-token cached decode, 25M model):** 19.91 → 19.02 ms/tok =
+**1.05×**, tokens identical. The arithmetic closes exactly: eager LN ≈ 113 µs
+× 17 calls ≈ 1.9 ms/step; Triton ≈ 40 µs × 17 ≈ 0.7 ms — predicted saving
+~1.2 ms, measured 0.9 ms of a ~20 ms step.
+
+### Honest findings
+
+1. **Beating the naive path is easy (3–4×); beating PyTorch's own fused
+   kernel is not** (0.6× at small M — our Python-side launch wrapper costs
+   more than the kernel; 0.9× at M=8192, near parity where compute matters).
+   The right baseline for a custom kernel is the best *existing* fused kernel,
+   not the eager path — a lesson about choosing baselines as much as writing
+   kernels.
+2. **A kernel-level win shrinks to its Amdahl share end-to-end**: LN was ~10%
+   of the step, so 3× on LN ⇒ 1.05× overall. The other ~19 ms/tok is the
+   remaining ~250 tiny launches (Python loop over heads, separate q/k/v
+   projections). The real fix isn't more micro-fusion — it's the vLLM-style
+   restructuring (fused QKV, batched heads, no Python in the loop), whose
+   value we already measured: vLLM runs this model at 1.4 ms/tok, 14× ahead.
+
+---
+
+## Project status: all five steps complete (2026-07-07)
+
+1. ✅ vLLM serving (weight port + parity at every boundary)
+2. ✅ Benchmark harness (TTFT/ITL/throughput/memory + perplexity)
+3. ✅ GPTQ INT4 (3.7× memory, quality preserved, kernel-level analysis)
+4. ✅ KV cache (from-scratch implementation + vLLM prefix-cache experiment)
+5. ✅ Triton kernel (fused LayerNorm, correct + measured honestly)
+
+The through-line for interviews: every technique was measured, most "failed"
+to speed up end-to-end at this scale, and in every case we identified the
+regime (overhead-bound vs compute/memory-bound), proved it with a targeted
+experiment, and quantified where the technique DOES pay. That is
+profiling-first optimization.
+
 ### Open flag for Step 3 (quantization) — raised early on purpose
 
 AWQ/GPTQ tooling and 4-bit kernels (Marlin/ExLlama) target Llama-class models

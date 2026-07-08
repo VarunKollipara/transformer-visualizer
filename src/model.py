@@ -240,6 +240,12 @@ class LayerNorm(nn.Module):
     makes deep stacks train stably.
     """
 
+    # Class-level switch: when True (and on CUDA, in eval mode), use the fused
+    # Triton kernel from src/kernels.py instead of the ~6-kernel eager path.
+    # Off by default — Triton is Linux-only and training needs autograd through
+    # the eager ops. Flipped by benchmark/serving code: LayerNorm.use_fused = True
+    use_fused: bool = False
+
     def __init__(self, n_embd: int, eps: float = 1e-5) -> None:
         super().__init__()
         self.eps = eps  # tiny constant so we never divide by zero
@@ -247,6 +253,9 @@ class LayerNorm(nn.Module):
         self.beta = nn.Parameter(torch.zeros(n_embd))   # learnable shift, starts at 0
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        if LayerNorm.use_fused and x.is_cuda and not self.training:
+            from src.kernels import fused_layernorm  # lazy: Triton is Linux-only
+            return fused_layernorm(x, self.gamma, self.beta, self.eps)
         mean = x.mean(dim=-1, keepdim=True)                 # (B, T, 1) per-token mean
         var = x.var(dim=-1, keepdim=True, unbiased=False)   # (B, T, 1) per-token variance
         x_norm = (x - mean) / torch.sqrt(var + self.eps)    # normalize across channels
