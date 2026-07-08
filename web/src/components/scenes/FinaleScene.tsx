@@ -200,16 +200,20 @@ export default function FinaleScene({ phase: phaseProp, onNext, restart }: Scene
         </>
       )}
 
-      {/* generate-only: the closing line */}
+      {/* generate-only: the closing line, now a handoff into the epilogue */}
       {phase === "generate" && done && (
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="mx-auto mt-6 max-w-xl">
           <p className="text-[15px] leading-relaxed text-stone-600">
             That&apos;s the whole machine. Scale it up — far more text, billions of
             parameters, a much longer memory — and this exact loop becomes ChatGPT.
+            One puzzle left: this loop looks <em>expensive</em>&hellip;
           </p>
-          <button onClick={restart} className="mt-4 text-sm font-medium text-indigo-600 hover:text-indigo-500">
-            ↺ start over
-          </button>
+          <Continue onClick={onNext} label="Epilogue: why isn't ChatGPT slow?" delay={0.15} />
+          <div>
+            <button onClick={restart} className="mt-4 text-sm font-medium text-stone-400 transition hover:text-stone-600">
+              ↺ start over
+            </button>
+          </div>
         </motion.div>
       )}
     </div>

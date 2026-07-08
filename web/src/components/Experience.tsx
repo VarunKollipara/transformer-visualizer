@@ -6,6 +6,7 @@ import OpeningScene from "./scenes/OpeningScene";
 import PositionQueryScene from "./scenes/PositionQueryScene";
 import BlockScene from "./scenes/BlockScene";
 import FinaleScene from "./scenes/FinaleScene";
+import SpeedScene from "./scenes/SpeedScene";
 import type { SceneProps } from "./scenes/types";
 
 // The experience is a linear sequence of fullscreen scenes; most scenes contain
@@ -57,6 +58,17 @@ const SCENES: SceneDef[] = [
     phases: [
       { id: "training", label: "Training" },
       { id: "generate", label: "Generation" },
+    ],
+  },
+  {
+    id: "speed",
+    Component: SpeedScene,
+    phases: [
+      { id: "cost", label: "Why isn't it slow?" },
+      { id: "batching", label: "Batching" },
+      { id: "cache", label: "The KV cache" },
+      { id: "quantize", label: "Quantization" },
+      { id: "measure", label: "Measure first" },
     ],
   },
 ];
