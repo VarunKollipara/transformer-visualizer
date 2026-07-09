@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
 import Continue from "./Continue";
 import { SceneText, SceneTitle } from "./ui";
 import type { SceneProps } from "./types";
@@ -38,6 +38,9 @@ const MEM = [
 ];
 
 const EASE = [0.22, 1, 0.36, 1] as const;
+// One shared timing for every layout (position/size) morph in this scene, so
+// the carried stage reads as one object gliding between slides.
+const LAYOUT_T = { duration: 0.7, ease: EASE };
 
 /* ────────────────────────── charts ────────────────────────── */
 
@@ -216,7 +219,7 @@ function CostLoop() {
   const step = 0.12;
   const total = chars.length * step + 1.6;
   return (
-    <div className="mx-auto mt-8 max-w-xl rounded-xl border border-stone-200 bg-stone-50 p-5 text-left">
+    <div className="mx-auto mt-5 max-w-xl rounded-xl border border-stone-200 bg-stone-50 p-5 text-left">
       <div className="font-mono text-[15px] leading-relaxed text-stone-800">
         {chars.map((c, i) => (
           <motion.span
@@ -244,6 +247,146 @@ function CostLoop() {
   );
 }
 
+/* ────────────────────────── the carried stage ──────────────────────────
+   The scene's protagonist: THE MODEL as a physical object that persists
+   across all five slides (never keyed by phase) and accumulates each trick —
+   the crowd fans in (batching), a memory docks on (KV cache), the box itself
+   shrinks (quantization), and finally it earns its "measured" badge. All
+   morphs are layout animations on the same shared timing. */
+function ModelStage({ phase }: { phase: Phase }) {
+  const crowd = phase !== "cost";                                 // trick 1
+  const memory = phase === "cache" || phase === "quantize" || phase === "measure"; // trick 2
+  const small = phase === "quantize" || phase === "measure";      // trick 3
+  const badge = phase === "measure";
+
+  return (
+    <motion.div
+      layout
+      transition={{ layout: LAYOUT_T }}
+      className="mx-auto mt-7 flex min-h-[110px] max-w-xl items-center justify-center gap-3 sm:gap-4"
+    >
+      {/* the people sending requests */}
+      <div className="flex flex-col items-end gap-1.5">
+        <motion.div
+          layout
+          transition={{ layout: LAYOUT_T }}
+          className="rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-0.5 text-[11px] font-medium text-indigo-700"
+        >
+          you
+        </motion.div>
+        <AnimatePresence mode="popLayout">
+          {crowd &&
+            [0, 1, 2].map((i) => (
+              <motion.div
+                key={`u${i}`}
+                layout
+                initial={{ opacity: 0, x: -14 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -14 }}
+                transition={{ delay: 0.2 + i * 0.12, duration: 0.4, ease: EASE, layout: LAYOUT_T }}
+                className="h-5 w-5 rounded-full border border-stone-300 bg-white"
+              >
+                <span className="sr-only">another person&apos;s request</span>
+              </motion.div>
+            ))}
+        </AnimatePresence>
+      </div>
+
+      {/* requests flowing in */}
+      <motion.span
+        layout
+        animate={{ opacity: [0.35, 1, 0.35] }}
+        transition={{
+          opacity: { duration: 1.4, repeat: Infinity, ease: "easeInOut" },
+          layout: LAYOUT_T,
+        }}
+        className="text-stone-400"
+        aria-hidden
+      >
+        →
+      </motion.span>
+
+      {/* THE MODEL — the object every slide operates on */}
+      <motion.div
+        layout
+        transition={{ layout: LAYOUT_T }}
+        className={`relative rounded-xl border-2 border-indigo-200 bg-white text-center shadow-sm ${
+          small ? "px-3 py-2" : "px-6 py-4"
+        }`}
+      >
+        <motion.div layout="position" className={`font-semibold text-stone-800 ${small ? "text-xs" : "text-sm"}`}>
+          the model
+        </motion.div>
+        <div className={`mt-0.5 font-mono text-stone-400 ${small ? "text-[9px]" : "text-[11px]"}`}>
+          25M weights ·{" "}
+          <AnimatePresence mode="popLayout" initial={false}>
+            <motion.span
+              key={small ? "4bit" : "16bit"}
+              layout
+              initial={{ opacity: 0, y: 7 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -7 }}
+              transition={{ duration: 0.35, ease: EASE }}
+              className={`inline-block font-semibold ${small ? "text-indigo-600" : "text-stone-500"}`}
+            >
+              {small ? "4-bit · 13.1 MiB" : "16-bit · 48.5 MiB"}
+            </motion.span>
+          </AnimatePresence>
+        </div>
+        {/* the heartbeat: it's always running */}
+        <motion.span
+          animate={{ opacity: [0.3, 1, 0.3], scale: [0.85, 1, 0.85] }}
+          transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
+          className="absolute -left-1.5 top-1/2 h-3 w-3 -translate-y-1/2 rounded-full bg-indigo-500"
+          aria-hidden
+        />
+        {/* the final slide's stamp */}
+        <AnimatePresence>
+          {badge && (
+            <motion.span
+              key="badge"
+              initial={{ opacity: 0, scale: 0.6, rotate: -8 }}
+              animate={{ opacity: 1, scale: 1, rotate: 0 }}
+              exit={{ opacity: 0, scale: 0.6 }}
+              transition={{ delay: 0.35, duration: 0.4, ease: EASE }}
+              className="absolute -right-4 -top-3 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700"
+            >
+              ⏱ measured
+            </motion.span>
+          )}
+        </AnimatePresence>
+      </motion.div>
+
+      {/* the memory it gains in trick 2 */}
+      <AnimatePresence mode="popLayout">
+        {memory && (
+          <motion.div
+            key="kv"
+            layout
+            initial={{ opacity: 0, x: 18 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 18 }}
+            transition={{ duration: 0.5, ease: EASE, layout: LAYOUT_T }}
+            className="flex items-center gap-2"
+          >
+            <span className="text-stone-400" aria-hidden>⇄</span>
+            <div
+              className={`rounded-lg border border-dashed border-indigo-300 bg-indigo-50/60 text-center ${
+                small ? "px-2 py-1.5" : "px-3 py-2"
+              }`}
+            >
+              <div className={`font-semibold text-indigo-700 ${small ? "text-[10px]" : "text-xs"}`}>memory</div>
+              <div className={`text-indigo-400 ${small ? "text-[8px]" : "text-[10px]"}`}>
+                everything it already read
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
+}
+
 /* ────────────────────────── the scene ────────────────────────── */
 
 // A chart panel with a consistent entrance.
@@ -253,7 +396,7 @@ function Panel({ children, delay = 0.25 }: { children: React.ReactNode; delay?: 
       initial={{ opacity: 0, y: 18 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay, duration: 0.55, ease: EASE }}
-      className="mx-auto mt-6 max-w-xl rounded-xl border border-stone-200 bg-white p-4"
+      className="mx-auto mt-5 max-w-xl rounded-xl border border-stone-200 bg-white p-4"
     >
       {children}
     </motion.div>
@@ -262,14 +405,16 @@ function Panel({ children, delay = 0.25 }: { children: React.ReactNode; delay?: 
 
 // Epilogue: the systems act. Everything the visitor just learned (the loop, the
 // re-reading, the weights) becomes a performance problem — and every claim on
-// screen is a measurement from this repo's benchmark harness.
+// screen is a measurement from this repo's benchmark harness. The title/copy
+// and charts are keyed per phase; the ModelStage between them is NOT — it's
+// the carried element that glides and grows through the whole scene.
 export default function SpeedScene({ phase: phaseProp, onNext, restart }: SceneProps) {
   const phase = phaseProp as Phase;
 
   return (
     <div className="text-center">
-      {/* keyed by phase so each slide gets a fresh entrance */}
-      <motion.div key={phase} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
+      {/* per-phase title + intro (keyed: fresh entrance each slide) */}
+      <motion.div key={`t-${phase}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
         {phase === "cost" && (
           <>
             <SceneTitle>Epilogue: why isn&apos;t ChatGPT slow?</SceneTitle>
@@ -282,11 +427,8 @@ export default function SpeedScene({ phase: phaseProp, onNext, restart }: SceneP
               We tried the industry&apos;s three big tricks on this very model — and
               measured everything.
             </SceneText>
-            <CostLoop />
-            <Continue onClick={onNext} label="Trick 1: share the ride" delay={0.5} />
           </>
         )}
-
         {phase === "batching" && (
           <>
             <SceneTitle>Trick 1 — serve everyone in one pass</SceneTitle>
@@ -298,6 +440,62 @@ export default function SpeedScene({ phase: phaseProp, onNext, restart }: SceneP
               {" — "}and new arrivals hop in mid-flight. Here&apos;s our model,
               measured:
             </SceneText>
+          </>
+        )}
+        {phase === "cache" && (
+          <>
+            <SceneTitle>Trick 2 — remember what you already read</SceneTitle>
+            <SceneText>
+              Remember the loop: to write character #201, the model re-reads all 200
+              before it — recomputing every key and value you saw in the attention
+              scene — then keeps <em>one</em> row of answers. But frozen history never
+              changes. So the model grows a{" "}
+              <strong className="text-stone-700">memory</strong>: the{" "}
+              <strong className="text-stone-700">KV cache</strong> keeps those keys
+              and values, and each new character only pays for itself. We built it
+              into this model and measured:
+            </SceneText>
+          </>
+        )}
+        {phase === "quantize" && (
+          <>
+            <SceneTitle>Trick 3 — store every weight in 4 bits</SceneTitle>
+            <SceneText>
+              Each of the model&apos;s 25 million learned numbers normally takes 16
+              bits of memory. <strong className="text-stone-700">Quantization</strong>{" "}
+              rounds each one to a 4-bit code — just 16 levels — chosen cleverly (an
+              algorithm called <strong className="text-stone-700">GPTQ</strong>{" "}
+              adjusts neighbouring weights to cancel each rounding error). Watch the
+              model itself shrink:
+            </SceneText>
+          </>
+        )}
+        {phase === "measure" && (
+          <>
+            <SceneTitle>The twist: half of it did nothing</SceneTitle>
+            <SceneText>
+              There it is — shared, remembering, 3.7× smaller. But honest results
+              from our own benchmark harness: on a model this small, some famous
+              tricks simply don&apos;t pay.
+            </SceneText>
+          </>
+        )}
+      </motion.div>
+
+      {/* THE CARRIED ELEMENT — persists and morphs across every slide */}
+      <ModelStage phase={phase} />
+
+      {/* per-phase evidence below the stage (keyed: fresh entrance each slide) */}
+      <motion.div key={`c-${phase}`} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15, duration: 0.45 }}>
+        {phase === "cost" && (
+          <>
+            <CostLoop />
+            <Continue onClick={onNext} label="Trick 1: share the ride" delay={0.5} />
+          </>
+        )}
+
+        {phase === "batching" && (
+          <>
             <Panel>
               <BatchingChart />
             </Panel>
@@ -312,15 +510,6 @@ export default function SpeedScene({ phase: phaseProp, onNext, restart }: SceneP
 
         {phase === "cache" && (
           <>
-            <SceneTitle>Trick 2 — remember what you already read</SceneTitle>
-            <SceneText>
-              Remember the loop: to write character #201, the model re-reads all 200
-              before it — recomputing every key and value you saw in the attention
-              scene — then keeps <em>one</em> row of answers. But frozen history never
-              changes. The <strong className="text-stone-700">KV cache</strong> saves
-              those keys and values, so each new character only pays for itself. We
-              built it into this model and measured:
-            </SceneText>
             <Panel>
               <KvChart />
             </Panel>
@@ -336,15 +525,6 @@ export default function SpeedScene({ phase: phaseProp, onNext, restart }: SceneP
 
         {phase === "quantize" && (
           <>
-            <SceneTitle>Trick 3 — store every weight in 4 bits</SceneTitle>
-            <SceneText>
-              Each of the model&apos;s 25 million learned numbers normally takes 16
-              bits of memory. <strong className="text-stone-700">Quantization</strong>{" "}
-              rounds each one to a 4-bit code — just 16 levels — chosen cleverly (an
-              algorithm called <strong className="text-stone-700">GPTQ</strong>{" "}
-              adjusts neighbouring weights to cancel each rounding error). The
-              payoff:
-            </SceneText>
             <Panel>
               <MemoryChart />
             </Panel>
@@ -361,16 +541,11 @@ export default function SpeedScene({ phase: phaseProp, onNext, restart }: SceneP
 
         {phase === "measure" && (
           <>
-            <SceneTitle>The twist: half of it did nothing</SceneTitle>
-            <SceneText>
-              Honest results from our own benchmark harness — on a model this small,
-              some famous tricks simply don&apos;t pay:
-            </SceneText>
             <motion.ul
               initial="hidden"
               animate="show"
-              variants={{ show: { transition: { staggerChildren: 0.15, delayChildren: 0.3 } } }}
-              className="mx-auto mt-6 max-w-xl space-y-3 text-left"
+              variants={{ show: { transition: { staggerChildren: 0.15, delayChildren: 0.4 } } }}
+              className="mx-auto mt-5 max-w-xl space-y-3 text-left"
             >
               {[
                 ["Half-precision math (fp16)", "made our model 17% slower — nothing it speeds up was the bottleneck."],
