@@ -212,50 +212,52 @@ function MemoryChart() {
   );
 }
 
-// Phase-1 loop: characters appear one by one; each one pulses "the whole model
-// ran". Loops forever — it's the cost intuition the rest of the scene attacks.
-function CostLoop() {
-  const chars = "the whole model runs for every single character".split("");
-  const step = 0.12;
-  const total = chars.length * step + 1.6;
+// One output stream from the model: a looping typewriter line. All streams
+// share the same loop length so parallel streams stay in step.
+const STREAM_LOOP = 4.2; // seconds per full type-and-hold cycle
+function Stream({
+  text, delay = 0, small = false, dim = false,
+}: {
+  text: string; delay?: number; small?: boolean; dim?: boolean;
+}) {
+  const step = 0.09;
   return (
-    <div className="mx-auto mt-5 max-w-xl rounded-xl border border-stone-200 bg-stone-50 p-5 text-left">
-      <div className="font-mono text-[15px] leading-relaxed text-stone-800">
-        {chars.map((c, i) => (
-          <motion.span
-            key={i}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: [0, 1, 1] }}
-            transition={{
-              delay: i * step, duration: 0.3,
-              repeat: Infinity, repeatDelay: total - 0.3,
-            }}
-          >
-            {c}
-          </motion.span>
-        ))}
-      </div>
-      <motion.div
-        className="mt-3 flex items-center gap-2 text-xs text-stone-400"
-        animate={{ opacity: [0.5, 1, 0.5] }}
-        transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
-      >
-        <span className="inline-block h-2 w-2 rounded-full bg-indigo-500" />
-        25 million multiplications… per character
-      </motion.div>
+    <div
+      className={`whitespace-nowrap text-left font-mono leading-tight ${
+        small ? "text-[9px]" : "text-[11px]"
+      } ${dim ? "text-stone-400" : "text-stone-700"}`}
+    >
+      {text.split("").map((c, i) => (
+        <motion.span
+          key={i}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: [0, 1, 1] }}
+          transition={{
+            delay: delay + i * step, duration: 0.2,
+            repeat: Infinity, repeatDelay: STREAM_LOOP - 0.2,
+          }}
+        >
+          {c}
+        </motion.span>
+      ))}
     </div>
   );
 }
 
 /* ────────────────────────── the carried stage ──────────────────────────
-   The scene's protagonist: THE MODEL as a physical object that persists
-   across all five slides (never keyed by phase) and accumulates each trick —
-   the crowd fans in (batching), a memory docks on (KV cache), the box itself
-   shrinks (quantization), and finally it earns its "measured" badge. All
-   morphs are layout animations on the same shared timing. */
+   The scene's protagonist: a LIVE PIPELINE — people → the model → its output
+   streams — that persists across all five slides (never keyed by phase) and
+   DEMONSTRATES each trick rather than illustrating it: the crowd fans in and
+   extra output streams start (batching); a memory docks under the box and
+   visibly fills as it reads (KV cache); the box shrinks while its output
+   keeps flowing unchanged (quantization); the running, fully-upgraded
+   pipeline earns its "measured" badge. All morphs share one layout timing. */
+const OTHER_STREAMS = ["O gentle Romeo,", "Come, night; come", "What say the city?"];
+
 function ModelStage({ phase }: { phase: Phase }) {
   const crowd = phase !== "cost";                                 // trick 1
   const memory = phase === "cache" || phase === "quantize" || phase === "measure"; // trick 2
+  const filling = phase === "cache";                              // memory demo runs on its own slide
   const small = phase === "quantize" || phase === "measure";      // trick 3
   const badge = phase === "measure";
 
@@ -263,7 +265,7 @@ function ModelStage({ phase }: { phase: Phase }) {
     <motion.div
       layout
       transition={{ layout: LAYOUT_T }}
-      className="mx-auto mt-7 flex min-h-[110px] max-w-xl items-center justify-center gap-3 sm:gap-4"
+      className="mx-auto mt-6 flex min-h-[120px] max-w-xl items-center justify-center gap-2 sm:gap-3"
     >
       {/* the people sending requests */}
       <div className="flex flex-col items-end gap-1.5">
@@ -306,83 +308,134 @@ function ModelStage({ phase }: { phase: Phase }) {
         →
       </motion.span>
 
-      {/* THE MODEL — the object every slide operates on */}
-      <motion.div
-        layout
-        transition={{ layout: LAYOUT_T }}
-        className={`relative rounded-xl border-2 border-indigo-200 bg-white text-center shadow-sm ${
-          small ? "px-3 py-2" : "px-6 py-4"
-        }`}
-      >
-        <motion.div layout="position" className={`font-semibold text-stone-800 ${small ? "text-xs" : "text-sm"}`}>
-          the model
-        </motion.div>
-        <div className={`mt-0.5 font-mono text-stone-400 ${small ? "text-[9px]" : "text-[11px]"}`}>
-          25M weights ·{" "}
-          <AnimatePresence mode="popLayout" initial={false}>
-            <motion.span
-              key={small ? "4bit" : "16bit"}
-              layout
-              initial={{ opacity: 0, y: 7 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -7 }}
-              transition={{ duration: 0.35, ease: EASE }}
-              className={`inline-block font-semibold ${small ? "text-indigo-600" : "text-stone-500"}`}
-            >
-              {small ? "4-bit · 13.1 MiB" : "16-bit · 48.5 MiB"}
-            </motion.span>
+      {/* THE MODEL (+ the memory it gains in trick 2, docked underneath) */}
+      <div className="flex flex-col items-center gap-1.5">
+        <motion.div
+          layout
+          transition={{ layout: LAYOUT_T }}
+          className={`relative rounded-xl border-2 border-indigo-200 bg-white text-center shadow-sm ${
+            small ? "px-3 py-1.5" : "px-4 py-3 sm:px-6"
+          }`}
+        >
+          <motion.div layout="position" className={`font-semibold text-stone-800 ${small ? "text-xs" : "text-sm"}`}>
+            the model
+          </motion.div>
+          <div className={`mt-0.5 whitespace-nowrap font-mono text-stone-400 ${small ? "text-[9px]" : "text-[10px] sm:text-[11px]"}`}>
+            25M weights ·{" "}
+            <AnimatePresence mode="popLayout" initial={false}>
+              <motion.span
+                key={small ? "4bit" : "16bit"}
+                layout
+                initial={{ opacity: 0, y: 7 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -7 }}
+                transition={{ duration: 0.35, ease: EASE }}
+                className={`inline-block font-semibold ${small ? "text-indigo-600" : "text-stone-500"}`}
+              >
+                {small ? "4-bit · 13.1 MiB" : "16-bit · 48.5 MiB"}
+              </motion.span>
+            </AnimatePresence>
+          </div>
+          {/* the heartbeat: it's always running */}
+          <motion.span
+            animate={{ opacity: [0.3, 1, 0.3], scale: [0.85, 1, 0.85] }}
+            transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
+            className="absolute -left-1.5 top-1/2 h-3 w-3 -translate-y-1/2 rounded-full bg-indigo-500"
+            aria-hidden
+          />
+          {/* the final slide's stamp */}
+          <AnimatePresence>
+            {badge && (
+              <motion.span
+                key="badge"
+                initial={{ opacity: 0, scale: 0.6, rotate: -8 }}
+                animate={{ opacity: 1, scale: 1, rotate: 0 }}
+                exit={{ opacity: 0, scale: 0.6 }}
+                transition={{ delay: 0.35, duration: 0.4, ease: EASE }}
+                className="absolute -right-4 -top-3 whitespace-nowrap rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700"
+              >
+                ⏱ measured
+              </motion.span>
+            )}
           </AnimatePresence>
-        </div>
-        {/* the heartbeat: it's always running */}
-        <motion.span
-          animate={{ opacity: [0.3, 1, 0.3], scale: [0.85, 1, 0.85] }}
-          transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute -left-1.5 top-1/2 h-3 w-3 -translate-y-1/2 rounded-full bg-indigo-500"
-          aria-hidden
-        />
-        {/* the final slide's stamp */}
-        <AnimatePresence>
-          {badge && (
-            <motion.span
-              key="badge"
-              initial={{ opacity: 0, scale: 0.6, rotate: -8 }}
-              animate={{ opacity: 1, scale: 1, rotate: 0 }}
-              exit={{ opacity: 0, scale: 0.6 }}
-              transition={{ delay: 0.35, duration: 0.4, ease: EASE }}
-              className="absolute -right-4 -top-3 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700"
-            >
-              ⏱ measured
-            </motion.span>
-          )}
-        </AnimatePresence>
-      </motion.div>
+        </motion.div>
 
-      {/* the memory it gains in trick 2 */}
-      <AnimatePresence mode="popLayout">
-        {memory && (
-          <motion.div
-            key="kv"
-            layout
-            initial={{ opacity: 0, x: 18 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 18 }}
-            transition={{ duration: 0.5, ease: EASE, layout: LAYOUT_T }}
-            className="flex items-center gap-2"
-          >
-            <span className="text-stone-400" aria-hidden>⇄</span>
-            <div
-              className={`rounded-lg border border-dashed border-indigo-300 bg-indigo-50/60 text-center ${
-                small ? "px-2 py-1.5" : "px-3 py-2"
+        {/* the memory, filling cell by cell as the model reads */}
+        <AnimatePresence mode="popLayout">
+          {memory && (
+            <motion.div
+              key="kv"
+              layout
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.5, ease: EASE, layout: LAYOUT_T }}
+              className={`flex items-center gap-1.5 rounded-lg border border-dashed border-indigo-300 bg-indigo-50/60 ${
+                small ? "px-2 py-1" : "px-2.5 py-1.5"
               }`}
             >
-              <div className={`font-semibold text-indigo-700 ${small ? "text-[10px]" : "text-xs"}`}>memory</div>
-              <div className={`text-indigo-400 ${small ? "text-[8px]" : "text-[10px]"}`}>
-                everything it already read
+              <span className={`font-semibold text-indigo-700 ${small ? "text-[9px]" : "text-[10px]"}`}>
+                memory
+              </span>
+              <div className="flex gap-0.5" aria-hidden>
+                {[...Array(8)].map((_, i) =>
+                  filling ? (
+                    <motion.span
+                      key={i}
+                      className="h-1.5 w-1.5 rounded-[2px] bg-indigo-400"
+                      initial={{ opacity: 0.15 }}
+                      animate={{ opacity: [0.15, 1, 1] }}
+                      transition={{
+                        delay: 0.6 + i * (STREAM_LOOP - 0.6) / 8, duration: 0.25,
+                        repeat: Infinity, repeatDelay: STREAM_LOOP - 0.25,
+                      }}
+                    />
+                  ) : (
+                    <span key={i} className="h-1.5 w-1.5 rounded-[2px] bg-indigo-400" />
+                  ),
+                )}
               </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* output flowing out */}
+      <motion.span
+        layout
+        animate={{ opacity: [0.35, 1, 0.35] }}
+        transition={{
+          opacity: { duration: 1.4, repeat: Infinity, ease: "easeInOut", delay: 0.7 },
+          layout: LAYOUT_T,
+        }}
+        className="text-stone-400"
+        aria-hidden
+      >
+        →
+      </motion.span>
+
+      {/* the output streams: one per person being served (clipped at the
+          column edge — text "flows off stage" instead of into the margin) */}
+      <div className="flex w-[104px] flex-col gap-1 overflow-hidden sm:w-[130px]">
+        <motion.div layout transition={{ layout: LAYOUT_T }}>
+          <Stream text="What say the city?" small={crowd} />
+        </motion.div>
+        <AnimatePresence mode="popLayout">
+          {crowd &&
+            OTHER_STREAMS.map((t, i) => (
+              <motion.div
+                key={t}
+                layout
+                initial={{ opacity: 0, x: 14 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 14 }}
+                transition={{ delay: 0.25 + i * 0.12, duration: 0.4, ease: EASE, layout: LAYOUT_T }}
+              >
+                <Stream text={t} small dim delay={0.4 + i * 0.5} />
+              </motion.div>
+            ))}
+        </AnimatePresence>
+      </div>
     </motion.div>
   );
 }
@@ -424,8 +477,9 @@ export default function SpeedScene({ phase: phaseProp, onNext, restart }: SceneP
               and real assistants do this with billions of parameters, for millions
               of people, all at once. Making that fast is its own engineering craft:{" "}
               <strong className="text-stone-700">inference optimization</strong>.
-              We tried the industry&apos;s three big tricks on this very model — and
-              measured everything.
+              Below, the model is serving you, live in this metaphor — watch it gain
+              the industry&apos;s three big tricks, each one measured on this very
+              model.
             </SceneText>
           </>
         )}
@@ -437,8 +491,8 @@ export default function SpeedScene({ phase: phaseProp, onNext, restart }: SceneP
               inference servers like <strong className="text-stone-700">vLLM</strong>{" "}
               stack many people&apos;s requests into each pass —{" "}
               <strong className="text-stone-700">continuous batching</strong>
-              {" — "}and new arrivals hop in mid-flight. Here&apos;s our model,
-              measured:
+              {" — "}and new arrivals hop in mid-flight. Three more people just
+              joined below: one model, four streams. Measured:
             </SceneText>
           </>
         )}
@@ -446,14 +500,12 @@ export default function SpeedScene({ phase: phaseProp, onNext, restart }: SceneP
           <>
             <SceneTitle>Trick 2 — remember what you already read</SceneTitle>
             <SceneText>
-              Remember the loop: to write character #201, the model re-reads all 200
-              before it — recomputing every key and value you saw in the attention
-              scene — then keeps <em>one</em> row of answers. But frozen history never
-              changes. So the model grows a{" "}
-              <strong className="text-stone-700">memory</strong>: the{" "}
-              <strong className="text-stone-700">KV cache</strong> keeps those keys
-              and values, and each new character only pays for itself. We built it
-              into this model and measured:
+              To write character #201, the model used to re-read all 200 before it —
+              recomputing every key and value from the attention scene. But frozen
+              history never changes. So it just grew a{" "}
+              <strong className="text-stone-700">memory</strong> (the{" "}
+              <strong className="text-stone-700">KV cache</strong>) — watch it fill
+              as the model reads. Each new character now only pays for itself:
             </SceneText>
           </>
         )}
@@ -466,7 +518,7 @@ export default function SpeedScene({ phase: phaseProp, onNext, restart }: SceneP
               rounds each one to a 4-bit code — just 16 levels — chosen cleverly (an
               algorithm called <strong className="text-stone-700">GPTQ</strong>{" "}
               adjusts neighbouring weights to cancel each rounding error). Watch the
-              model itself shrink:
+              box shrink — while its output keeps streaming, unchanged:
             </SceneText>
           </>
         )}
@@ -489,7 +541,14 @@ export default function SpeedScene({ phase: phaseProp, onNext, restart }: SceneP
       <motion.div key={`c-${phase}`} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15, duration: 0.45 }}>
         {phase === "cost" && (
           <>
-            <CostLoop />
+            <motion.p
+              animate={{ opacity: [0.55, 1, 0.55] }}
+              transition={{ duration: 1.4, repeat: Infinity, ease: "easeInOut" }}
+              className="mt-4 text-sm text-stone-400"
+            >
+              every character in that stream = one full pass through all 25 million
+              weights
+            </motion.p>
             <Continue onClick={onNext} label="Trick 1: share the ride" delay={0.5} />
           </>
         )}

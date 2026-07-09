@@ -163,9 +163,11 @@ export default function Experience() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={SCENE_VARIANT.exit}
             transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-            className="absolute inset-0 flex items-center justify-center overflow-y-auto px-6 py-8"
+            className="absolute inset-0 flex justify-center overflow-y-auto px-6 py-8"
           >
-            <div className="w-full max-w-3xl">
+            {/* my-auto (not items-center on the parent): centers short scenes but
+                lets tall ones scroll from the top instead of clipping their heads */}
+            <div className="my-auto w-full max-w-3xl">
               <scene.Component phase={cur.phase} onNext={next} onBack={back} restart={restart} />
             </div>
           </motion.div>
