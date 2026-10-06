@@ -1,4 +1,11 @@
-# Transformer Visualizer — built from scratch, then made fast
+# Transformer Visualizer
+
+> A GPT-style transformer built from scratch in PyTorch, visualized in the
+> browser, then optimized and benchmarked with vLLM, KV caching, GPTQ, and Triton.
+
+**[Live Demo](https://transformer-visualizer-silk.vercel.app/)** · **[Optimization Deep Dive](OPTIMIZATION_LOG.md)**
+
+`PyTorch` · `Triton` · `vLLM` · `ONNX` · `Next.js` · `TypeScript` · `GPTQ`
 
 A GPT-style transformer built **layer by layer from scratch** in PyTorch (no
 `nn.Transformer`, no `nn.MultiheadAttention`), an interactive web visualizer
